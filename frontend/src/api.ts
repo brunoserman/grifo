@@ -50,3 +50,6 @@ export const moveItem = (
   aboveId: string | null,
   belowId: string | null
 ) => request<Item>(`/api/items/${id}/move`, json({ aboveId, belowId }))
+
+// URL of a stored PDF, served by the Worker from R2.
+export const fileUrl = (id: string) => `/api/items/${id}/file`

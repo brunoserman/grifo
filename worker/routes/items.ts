@@ -176,6 +176,32 @@ items.get('/items', async (c) => {
   return c.json(results)
 })
 
+// GET /api/items/:id/file
+// Streams a PDF back from R2 so the browser can open it inline (or download
+// it). This is how a saved PDF is never a dead end.
+items.get('/items/:id/file', async (c) => {
+  const id = c.req.param('id')
+  const item = await getItem(c.env.DB, id)
+  if (!item || !item.r2_key) {
+    return c.json({ error: 'This item has no stored file' }, 404)
+  }
+
+  const object = await c.env.FILES.get(item.r2_key)
+  if (!object) {
+    return c.json({ error: 'File not found in storage' }, 404)
+  }
+
+  const headers = new Headers()
+  object.writeHttpMetadata(headers)
+  headers.set('content-type', object.httpMetadata?.contentType ?? 'application/pdf')
+  headers.set('etag', object.httpEtag)
+  // "inline" lets the browser show the PDF; the built-in viewer offers download.
+  const safeName = item.title.replace(/[^\w.\- ]+/g, '_').slice(0, 100) || 'document'
+  headers.set('content-disposition', `inline; filename="${safeName}.pdf"`)
+
+  return new Response(object.body, { headers })
+})
+
 // PATCH /api/items/:id
 // Mark as read / requeue, and/or set an explicit position. Neither of these
 // changes indexed content, so the FTS tables are untouched here.

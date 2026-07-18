@@ -3,11 +3,13 @@ import type { Item } from './types'
 import * as api from './api'
 import AddItemBar from './components/AddItemBar'
 import QueueList from './components/QueueList'
+import ReaderModal from './components/ReaderModal'
 
 export default function App() {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [readerItem, setReaderItem] = useState<Item | null>(null)
 
   useEffect(() => {
     api
@@ -21,6 +23,24 @@ export default function App() {
   function handleAdded(item: Item) {
     setItems((prev) => [item, ...prev])
     setError(null)
+  }
+
+  // Every item must have a way to reach its content — an item you can't open
+  // is a lost link, which is what this app exists to prevent.
+  function handleOpen(item: Item) {
+    if (item.type === 'pdf') {
+      // The stored file, served from R2. Browser views it or downloads it.
+      window.open(api.fileUrl(item.id), '_blank', 'noopener')
+      return
+    }
+    const hasReadableContent = item.extraction === 'ok' && !!item.content_html
+    if (item.type === 'link' && !hasReadableContent) {
+      // Extraction failed or is missing: never a dead end, open the original.
+      if (item.source_url) window.open(item.source_url, '_blank', 'noopener')
+      return
+    }
+    // Links with clean text, and notes, open in the reading view.
+    setReaderItem(item)
   }
 
   async function handleMarkRead(id: string) {
@@ -90,11 +110,16 @@ export default function App() {
           <QueueList
             items={items}
             onReorder={handleReorder}
+            onOpen={handleOpen}
             onMarkRead={handleMarkRead}
             onDelete={handleDelete}
           />
         )}
       </div>
+
+      {readerItem && (
+        <ReaderModal item={readerItem} onClose={() => setReaderItem(null)} />
+      )}
     </div>
   )
 }
