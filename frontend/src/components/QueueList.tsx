@@ -17,13 +17,20 @@ import QueueItemCard from './QueueItemCard'
 type Props = {
   items: Item[]
   onReorder: (items: Item[], movedId: string, newIndex: number) => void
+  onOpen: (item: Item) => void
   onMarkRead: (id: string) => void
   onDelete: (id: string) => void
 }
 
 // The draggable queue. On drop it reorders locally and hands the new order back
 // to the parent, which persists the moved item's position.
-export default function QueueList({ items, onReorder, onMarkRead, onDelete }: Props) {
+export default function QueueList({
+  items,
+  onReorder,
+  onOpen,
+  onMarkRead,
+  onDelete,
+}: Props) {
   // A small movement threshold so clicking the buttons doesn't start a drag.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -56,6 +63,7 @@ export default function QueueList({ items, onReorder, onMarkRead, onDelete }: Pr
             <QueueItemCard
               key={item.id}
               item={item}
+              onOpen={onOpen}
               onMarkRead={onMarkRead}
               onDelete={onDelete}
             />
