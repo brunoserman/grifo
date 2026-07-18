@@ -4,12 +4,13 @@ compatibility_date = "2026-07-17"
 compatibility_flags = ["nodejs_compat"]
 
 # The frontend is built by Vite into frontend/dist and served as static assets
-# by the same Worker. "single-page-application" makes unknown paths fall back to
-# index.html, which a single-screen React app needs.
+# by the same Worker. "none" makes the ASSETS binding return a real 404 for a
+# missing path, so real files are served as themselves and the Worker decides
+# when to fall back to index.html (only for navigations). See worker/index.ts.
 [assets]
 directory = "./frontend/dist"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
+not_found_handling = "none"
 
 [[d1_databases]]
 binding = "DB"
