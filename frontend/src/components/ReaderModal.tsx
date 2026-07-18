@@ -1,22 +1,10 @@
 import { useEffect } from 'react'
 import type { Item } from '../types'
+import { readingTime, formatDate } from '../format'
 
 type Props = {
   item: Item
   onClose: () => void
-}
-
-function readingTime(item: Item): string | null {
-  if (!item.word_count) return null
-  return `${Math.max(1, Math.round(item.word_count / 200))} min read`
-}
-
-function savedDate(seconds: number): string {
-  return new Date(seconds * 1000).toLocaleDateString(undefined, {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
 }
 
 // A minimal reading view for links (clean extracted HTML) and notes. Highlights
@@ -30,7 +18,7 @@ export default function ReaderModal({ item, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const meta = [item.author, item.site_name, readingTime(item), savedDate(item.saved_at)]
+  const meta = [item.author, item.site_name, readingTime(item), formatDate(item.saved_at)]
     .filter(Boolean)
     .join(' · ')
 

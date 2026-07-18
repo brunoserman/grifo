@@ -1,33 +1,13 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Item } from '../types'
+import { readingTime, formatDate, typeLabel } from '../format'
 
 type Props = {
   item: Item
   onOpen: (item: Item) => void
   onMarkRead: (id: string) => void
   onDelete: (id: string) => void
-}
-
-// Roughly 200 words per minute. Only items with extracted text have a count.
-function readingTime(item: Item): string | null {
-  if (!item.word_count) return null
-  const minutes = Math.max(1, Math.round(item.word_count / 200))
-  return `${minutes} min read`
-}
-
-function savedDate(seconds: number): string {
-  return new Date(seconds * 1000).toLocaleDateString(undefined, {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
-}
-
-const typeLabel: Record<Item['type'], string> = {
-  link: 'Link',
-  pdf: 'PDF',
-  note: 'Note',
 }
 
 // One card in the queue. The whole card is the drag handle.
@@ -41,7 +21,7 @@ export default function QueueItemCard({ item, onOpen, onMarkRead, onDelete }: Pr
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const meta = [item.site_name || typeLabel[item.type], readingTime(item), savedDate(item.saved_at)]
+  const meta = [item.site_name || typeLabel[item.type], readingTime(item), formatDate(item.saved_at)]
     .filter(Boolean)
     .join(' · ')
 

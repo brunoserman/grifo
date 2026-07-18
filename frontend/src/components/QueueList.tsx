@@ -1,7 +1,8 @@
 import {
   DndContext,
   closestCenter,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -31,9 +32,15 @@ export default function QueueList({
   onMarkRead,
   onDelete,
 }: Props) {
-  // A small movement threshold so clicking the buttons doesn't start a drag.
+  // Mouse: start dragging after a small movement, so a click still opens.
+  // Touch: press and hold ~200ms to drag, so a tap opens and a scroll still
+  // scrolls (a finger that moves past the tolerance before the delay is a
+  // scroll, not a drag). This is what makes reordering work on Android.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 8 },
+    })
   )
 
   function handleDragEnd(event: DragEndEvent) {

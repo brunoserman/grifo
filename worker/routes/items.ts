@@ -165,11 +165,14 @@ async function savePdf(c: Ctx) {
 }
 
 // GET /api/items?status=queued
-// Ordered by position DESC: the top of the queue is the highest position.
+// The queue is ordered by position DESC (top = highest position). The read
+// archive is ordered by read_at DESC (most recently read first). The order
+// clause is derived from status, never from raw input, so it is safe to inline.
 items.get('/items', async (c) => {
   const status = c.req.query('status') ?? 'queued'
+  const orderBy = status === 'read' ? 'read_at DESC' : 'position DESC'
   const { results } = await c.env.DB.prepare(
-    'SELECT * FROM items WHERE status = ? ORDER BY position DESC'
+    `SELECT * FROM items WHERE status = ? ORDER BY ${orderBy}`
   )
     .bind(status)
     .all<Item>()
@@ -216,6 +219,12 @@ items.patch('/items/:id', async (c) => {
     sets.push("status = 'read'", 'read_at = unixepoch()')
   } else if (body.status === 'queued') {
     sets.push("status = 'queued'", 'read_at = NULL')
+    // Returning an item to the queue puts it back on top as a fresh priority,
+    // unless the caller also sent an explicit position (a drag reorder).
+    if (typeof body.position !== 'number') {
+      sets.push('position = ?')
+      binds.push(newPosition())
+    }
   }
   if (typeof body.position === 'number') {
     sets.push('position = ?')

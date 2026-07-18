@@ -42,6 +42,13 @@ export const markRead = (id: string) =>
     body: JSON.stringify({ status: 'read' }),
   })
 
+export const returnToQueue = (id: string) =>
+  request<Item>(`/api/items/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ status: 'queued' }),
+  })
+
 export const deleteItem = (id: string) =>
   request<{ ok: true }>(`/api/items/${id}`, { method: 'DELETE' })
 
