@@ -31,15 +31,15 @@ export default function QueueItemCard({ item, onOpen, onMarkRead, onDelete }: Pr
       style={style}
       {...attributes}
       {...listeners}
-      className="flex cursor-grab items-start gap-3 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm active:cursor-grabbing"
+      className="flex cursor-grab flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm active:cursor-grabbing"
     >
-      <div className="min-w-0 flex-1">
+      {/* Text spans the full width, so titles and meta are not squeezed by the
+          buttons. The title is draggable and, on a click/tap, opens the item. */}
+      <div className="min-w-0">
         <button
           type="button"
-          // onPointerDown stops the drag sensor from swallowing the click.
-          onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onOpen(item)}
-          className="block max-w-full truncate text-left font-medium text-neutral-900 hover:underline"
+          className="w-full text-left font-medium text-neutral-900 line-clamp-2 hover:underline"
         >
           {item.title}
         </button>
@@ -51,7 +51,8 @@ export default function QueueItemCard({ item, onOpen, onMarkRead, onDelete }: Pr
         )}
       </div>
 
-      <div className="flex shrink-0 gap-1">
+      {/* onPointerDown stops the drag sensor so a button press never drags. */}
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}

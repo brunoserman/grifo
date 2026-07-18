@@ -26,20 +26,20 @@ export default function ArchiveList({ items, onOpen, onReturn, onDelete }: Props
         return (
           <div
             key={item.id}
-            className="flex items-start gap-3 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm"
+            className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm"
           >
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0">
               <button
                 type="button"
                 onClick={() => onOpen(item)}
-                className="block max-w-full truncate text-left font-medium text-neutral-900 hover:underline"
+                className="w-full text-left font-medium text-neutral-900 line-clamp-2 hover:underline"
               >
                 {item.title}
               </button>
               <p className="mt-1 text-sm text-neutral-500">{meta}</p>
             </div>
 
-            <div className="flex shrink-0 gap-1">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => onOpen(item)}
