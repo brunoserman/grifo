@@ -1,0 +1,21 @@
+name = "grifo"
+main = "worker/index.ts"
+compatibility_date = "2026-07-17"
+compatibility_flags = ["nodejs_compat"]
+
+# The frontend is built by Vite into frontend/dist and served as static assets
+# by the same Worker. "single-page-application" makes unknown paths fall back to
+# index.html, which a single-screen React app needs.
+[assets]
+directory = "./frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "grifo"
+database_id = "799536ed-831d-4ab5-a55c-eba6901ac0bb"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "read-later-files"
