@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Grifo</title>
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- use-credentials so the manifest (and its icons) are fetched WITH the
+         Cloudflare Access cookie. Without it the fetch is blocked by Access and
+         Chrome reports "no manifest detected". -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
     <meta name="theme-color" content="#171717" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
   </head>
