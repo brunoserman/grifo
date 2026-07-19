@@ -5,9 +5,10 @@ import AddItemBar from './components/AddItemBar'
 import QueueList from './components/QueueList'
 import ArchiveList from './components/ArchiveList'
 import HighlightsView from './components/HighlightsView'
+import SearchView from './components/SearchView'
 import ReaderModal from './components/ReaderModal'
 
-type View = 'queue' | 'read' | 'highlights'
+type View = 'queue' | 'read' | 'highlights' | 'search'
 
 export default function App() {
   const [view, setView] = useState<View>('queue')
@@ -21,6 +22,12 @@ export default function App() {
   // Load the active view. Switching tabs refetches, so the archive and the
   // aggregated highlights are always current.
   useEffect(() => {
+    // Search manages its own data on demand.
+    if (view === 'search') {
+      setLoading(false)
+      setError(null)
+      return
+    }
     let active = true
     setLoading(true)
     setError(null)
@@ -58,16 +65,21 @@ export default function App() {
     setReaderItem(item)
   }
 
-  // Open the source of a highlight and scroll to the passage.
-  async function handleOpenSource(hl: HighlightWithItem) {
+  // Open an item by id (from the highlights page or a search result) and, when
+  // given, scroll to a specific highlight in it.
+  async function openSource(itemId: string, highlightId: string | null) {
     try {
-      const item = await api.getItem(hl.item_id)
+      const item = await api.getItem(itemId)
       const hasReadableContent = item.extraction === 'ok' && !!item.content_html
+      if (item.type === 'pdf') {
+        window.open(api.fileUrl(item.id), '_blank', 'noopener')
+        return
+      }
       if (item.type === 'link' && !hasReadableContent) {
         if (item.source_url) window.open(item.source_url, '_blank', 'noopener')
         return
       }
-      setReaderScrollTo(hl.id)
+      setReaderScrollTo(highlightId)
       setReaderItem(item)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not open the source')
@@ -147,6 +159,9 @@ export default function App() {
         <TabButton active={view === 'highlights'} onClick={() => setView('highlights')}>
           Highlights
         </TabButton>
+        <TabButton active={view === 'search'} onClick={() => setView('search')}>
+          Search
+        </TabButton>
       </nav>
 
       {view === 'queue' && <AddItemBar onAdded={handleAdded} onError={setError} />}
@@ -158,10 +173,15 @@ export default function App() {
       )}
 
       <div className="mt-6">
-        {loading ? (
+        {view === 'search' ? (
+          <SearchView onOpenSource={openSource} />
+        ) : loading ? (
           <p className="text-sm text-neutral-400">Loading…</p>
         ) : view === 'highlights' ? (
-          <HighlightsView highlights={allHighlights} onOpenSource={handleOpenSource} />
+          <HighlightsView
+            highlights={allHighlights}
+            onOpenSource={(hl) => openSource(hl.item_id, hl.id)}
+          />
         ) : items.length === 0 ? (
           <EmptyState view={view} />
         ) : view === 'queue' ? (

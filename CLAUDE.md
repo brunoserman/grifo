@@ -35,4 +35,4 @@ Cloudflare Workers + Hono, D1 (plain SQL, no ORM), R2, React + Vite + Tailwind.
 
 ## Current state
 
-Phase 1 (queue) shipped. Phase 2 (reading-view highlights + aggregated highlights page) in progress.
+Phase 1 (queue) and phase 2 (highlights) shipped. Phase 3 (search) in progress.
