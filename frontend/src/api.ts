@@ -1,4 +1,4 @@
-import type { Item } from './types'
+import type { Item, Highlight, HighlightWithItem } from './types'
 
 // Thin wrapper around the /api endpoints. Every call throws on a non-2xx
 // response so callers can surface the error to the user.
@@ -60,3 +60,19 @@ export const moveItem = (
 
 // URL of a stored PDF, served by the Worker from R2.
 export const fileUrl = (id: string) => `/api/items/${id}/file`
+
+export const getItem = (id: string) => request<Item>(`/api/items/${id}`)
+
+export const listItemHighlights = (itemId: string) =>
+  request<Highlight[]>(`/api/items/${itemId}/highlights`)
+
+export const createHighlight = (
+  itemId: string,
+  data: { text: string; prefix: string; suffix: string; color: string; note: string }
+) => request<Highlight>(`/api/items/${itemId}/highlights`, json(data))
+
+export const deleteHighlight = (id: string) =>
+  request<{ ok: true }>(`/api/highlights/${id}`, { method: 'DELETE' })
+
+export const listAllHighlights = () =>
+  request<HighlightWithItem[]>('/api/highlights')

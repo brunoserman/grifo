@@ -179,6 +179,15 @@ items.get('/items', async (c) => {
   return c.json(results)
 })
 
+// GET /api/items/:id
+// A single item with its full content. Used to open a source from elsewhere
+// (e.g. the aggregated highlights view).
+items.get('/items/:id', async (c) => {
+  const item = await getItem(c.env.DB, c.req.param('id'))
+  if (!item) return c.json({ error: 'Item not found' }, 404)
+  return c.json(item)
+})
+
 // GET /api/items/:id/file
 // Streams a PDF back from R2 so the browser can open it inline (or download
 // it). This is how a saved PDF is never a dead end.

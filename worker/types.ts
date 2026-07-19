@@ -28,3 +28,17 @@ export type Item = {
   saved_at: number
   read_at: number | null
 }
+
+// A row of the highlights table. Anchored by quote + prefix + suffix, never by
+// DOM position (see SPEC.md). page_number is PDF-only and unused in phase 2.
+export type Highlight = {
+  id: string
+  item_id: string
+  text: string
+  prefix: string | null
+  suffix: string | null
+  page_number: number | null
+  color: string
+  note: string | null
+  created_at: number
+}

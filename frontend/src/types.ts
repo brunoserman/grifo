@@ -21,3 +21,24 @@ export type Item = {
   saved_at: number
   read_at: number | null
 }
+
+// A highlight, anchored by quote + prefix + suffix.
+export type Highlight = {
+  id: string
+  item_id: string
+  text: string
+  prefix: string | null
+  suffix: string | null
+  page_number: number | null
+  color: string
+  note: string | null
+  created_at: number
+}
+
+// A highlight joined with its source item, for the aggregated view.
+export type HighlightWithItem = Highlight & {
+  item_title: string
+  item_type: Item['type']
+  item_status: Item['status']
+  item_source_url: string | null
+}

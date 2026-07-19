@@ -1,11 +1,13 @@
 import { Hono } from 'hono'
 import type { Bindings } from './types'
 import { items } from './routes/items'
+import { highlights } from './routes/highlights'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
 // All API routes live under /api. Everything else is the React app.
 app.route('/api', items)
+app.route('/api', highlights)
 
 // Everything else is the built React app.
 //

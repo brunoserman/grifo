@@ -1,29 +1,36 @@
 import { useEffect, useState } from 'react'
-import type { Item } from './types'
+import type { Item, HighlightWithItem } from './types'
 import * as api from './api'
 import AddItemBar from './components/AddItemBar'
 import QueueList from './components/QueueList'
 import ArchiveList from './components/ArchiveList'
+import HighlightsView from './components/HighlightsView'
 import ReaderModal from './components/ReaderModal'
 
-type View = 'queue' | 'read'
+type View = 'queue' | 'read' | 'highlights'
 
 export default function App() {
   const [view, setView] = useState<View>('queue')
   const [items, setItems] = useState<Item[]>([])
+  const [allHighlights, setAllHighlights] = useState<HighlightWithItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [readerItem, setReaderItem] = useState<Item | null>(null)
+  const [readerScrollTo, setReaderScrollTo] = useState<string | null>(null)
 
-  // Load the active view. Switching tabs refetches, so an item just marked read
-  // shows up in the archive, and a returned item shows back on top of the queue.
+  // Load the active view. Switching tabs refetches, so the archive and the
+  // aggregated highlights are always current.
   useEffect(() => {
     let active = true
     setLoading(true)
     setError(null)
-    api
-      .listItems(view === 'read' ? 'read' : 'queued')
-      .then((data) => active && setItems(data))
+    const load =
+      view === 'highlights'
+        ? api.listAllHighlights().then((h) => active && setAllHighlights(h))
+        : api
+            .listItems(view === 'read' ? 'read' : 'queued')
+            .then((d) => active && setItems(d))
+    load
       .catch((e) => active && setError(e.message))
       .finally(() => active && setLoading(false))
     return () => {
@@ -31,32 +38,51 @@ export default function App() {
     }
   }, [view])
 
-  // New items always land on top of the queue (highest position).
   function handleAdded(item: Item) {
     setItems((prev) => [item, ...prev])
     setError(null)
   }
 
-  // Every item must have a way to reach its content — an item you can't open
-  // is a lost link, which is what this app exists to prevent.
+  // Every item must have a way to reach its content.
   function handleOpen(item: Item) {
     if (item.type === 'pdf') {
-      // The stored file, served from R2. Browser views it or downloads it.
       window.open(api.fileUrl(item.id), '_blank', 'noopener')
       return
     }
     const hasReadableContent = item.extraction === 'ok' && !!item.content_html
     if (item.type === 'link' && !hasReadableContent) {
-      // Extraction failed or is missing: never a dead end, open the original.
       if (item.source_url) window.open(item.source_url, '_blank', 'noopener')
       return
     }
-    // Links with clean text, and notes, open in the reading view.
+    setReaderScrollTo(null)
     setReaderItem(item)
   }
 
-  // Marking as read moves the item to the archive; it is never deleted, and its
-  // highlights are untouched. Optimistically drop it from the queue view.
+  // Open the source of a highlight and scroll to the passage.
+  async function handleOpenSource(hl: HighlightWithItem) {
+    try {
+      const item = await api.getItem(hl.item_id)
+      const hasReadableContent = item.extraction === 'ok' && !!item.content_html
+      if (item.type === 'link' && !hasReadableContent) {
+        if (item.source_url) window.open(item.source_url, '_blank', 'noopener')
+        return
+      }
+      setReaderScrollTo(hl.id)
+      setReaderItem(item)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open the source')
+    }
+  }
+
+  function closeReader() {
+    setReaderItem(null)
+    setReaderScrollTo(null)
+    // Highlights may have changed while reading; refresh the aggregated view.
+    if (view === 'highlights') {
+      api.listAllHighlights().then(setAllHighlights).catch(() => {})
+    }
+  }
+
   async function handleMarkRead(id: string) {
     const previous = items
     setItems((prev) => prev.filter((i) => i.id !== id))
@@ -68,7 +94,6 @@ export default function App() {
     }
   }
 
-  // Move an item from the archive back onto the queue (fresh priority, on top).
   async function handleReturn(id: string) {
     const previous = items
     setItems((prev) => prev.filter((i) => i.id !== id))
@@ -91,12 +116,9 @@ export default function App() {
     }
   }
 
-  // Persist a drag. The list is ordered by position DESC, so the item now
-  // above the moved one has the larger position, and the one below the smaller.
   async function handleReorder(reordered: Item[], movedId: string, newIndex: number) {
     const previous = items
     setItems(reordered)
-
     const aboveId = reordered[newIndex - 1]?.id ?? null
     const belowId = reordered[newIndex + 1]?.id ?? null
     try {
@@ -122,6 +144,9 @@ export default function App() {
         <TabButton active={view === 'read'} onClick={() => setView('read')}>
           Read
         </TabButton>
+        <TabButton active={view === 'highlights'} onClick={() => setView('highlights')}>
+          Highlights
+        </TabButton>
       </nav>
 
       {view === 'queue' && <AddItemBar onAdded={handleAdded} onError={setError} />}
@@ -135,6 +160,8 @@ export default function App() {
       <div className="mt-6">
         {loading ? (
           <p className="text-sm text-neutral-400">Loading…</p>
+        ) : view === 'highlights' ? (
+          <HighlightsView highlights={allHighlights} onOpenSource={handleOpenSource} />
         ) : items.length === 0 ? (
           <EmptyState view={view} />
         ) : view === 'queue' ? (
@@ -156,7 +183,11 @@ export default function App() {
       </div>
 
       {readerItem && (
-        <ReaderModal item={readerItem} onClose={() => setReaderItem(null)} />
+        <ReaderModal
+          item={readerItem}
+          scrollToHighlightId={readerScrollTo}
+          onClose={closeReader}
+        />
       )}
     </div>
   )
