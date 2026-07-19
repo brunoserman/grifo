@@ -42,3 +42,16 @@ export type HighlightWithItem = Highlight & {
   item_status: Item['status']
   item_source_url: string | null
 }
+
+// One search hit — either an item (article/note) or a highlight — with a
+// snippet whose matches are wrapped in <mark> (already HTML-escaped server-side).
+export type SearchResult = {
+  kind: 'item' | 'highlight'
+  itemId: string
+  highlightId: string | null
+  title: string
+  type: Item['type']
+  author: string | null
+  siteName: string | null
+  snippet: string
+}

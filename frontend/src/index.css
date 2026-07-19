@@ -64,3 +64,11 @@ body {
   outline: 2px solid rgba(0, 0, 0, 0.35);
   outline-offset: 1px;
 }
+
+/* Matched terms inside a search snippet. */
+.search-snippet mark {
+  background-color: #fde68a;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
