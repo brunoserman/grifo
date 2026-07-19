@@ -24,7 +24,7 @@ const COLOR_KEYS = Object.keys(HIGHLIGHT_COLORS)
 export default function ReaderModal({ item, onClose, scrollToHighlightId }: Props) {
   const contentRef = useRef<HTMLDivElement>(null)
   const [highlights, setHighlights] = useState<Highlight[]>([])
-  const [selection, setSelection] = useState<CapturedSelection | null>(null)
+  const [pending, setPending] = useState<CapturedSelection | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
   const [popover, setPopover] = useState<{ hl: Highlight; x: number; y: number } | null>(
     null
@@ -35,11 +35,16 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
     item.content_html ??
     `<p>${escapeHtml(item.content_text ?? 'This item has no readable content.')}</p>`
 
+  // Escape cancels a pending selection first, then closes the reader.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (pending) setPending(null)
+      else onClose()
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, pending])
 
   // Load this item's highlights.
   useEffect(() => {
@@ -53,12 +58,41 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
     }
   }, [item.id])
 
-  // Repaint whenever the content or the highlights change. Highlights that can't
-  // be re-anchored are simply not painted (they stay in the aggregated list).
+  // Detect a settled selection through selectionchange, which fires for both
+  // mouse and touch (unlike mouseup). Debounced so we commit only once the
+  // selection stops moving. A collapsed selection is ignored, so focusing the
+  // note field does not dismiss the pending highlight.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
+    function onSelectionChange() {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        const container = contentRef.current
+        if (!container) return
+        const captured = captureSelection(container)
+        if (captured) {
+          setPending(captured)
+          setPopover(null)
+        }
+      }, 200)
+    }
+    document.addEventListener('selectionchange', onSelectionChange)
+    return () => {
+      document.removeEventListener('selectionchange', onSelectionChange)
+      clearTimeout(timer)
+    }
+  }, [])
+
+  // Repaint whenever the content, the highlights, or the pending preview change.
   useEffect(() => {
     const container = contentRef.current
     if (!container) return
-    paintHighlights(container, bodyHtml, highlights)
+    paintHighlights(
+      container,
+      bodyHtml,
+      highlights,
+      pending ? { start: pending.start, end: pending.end } : null
+    )
 
     if (scrollToHighlightId) {
       const mark = container.querySelector<HTMLElement>(
@@ -70,33 +104,32 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
         setTimeout(() => mark.classList.remove('hl-flash'), 1500)
       }
     }
-  }, [bodyHtml, highlights, scrollToHighlightId])
-
-  function onSelectionEnd() {
-    if (!contentRef.current) return
-    const captured = captureSelection(contentRef.current)
-    setSelection(captured)
-    if (captured) setPopover(null)
-  }
+  }, [bodyHtml, highlights, pending, scrollToHighlightId])
 
   async function saveHighlight(color: string) {
-    if (!selection || saving) return
+    if (!pending || saving) return
     setSaving(true)
     try {
       const hl = await api.createHighlight(item.id, {
-        text: selection.text,
-        prefix: selection.prefix,
-        suffix: selection.suffix,
+        text: pending.text,
+        prefix: pending.prefix,
+        suffix: pending.suffix,
         color,
         note: noteDraft,
       })
       setHighlights((prev) => [...prev, hl])
-      setSelection(null)
+      setPending(null)
       setNoteDraft('')
       window.getSelection()?.removeAllRanges()
     } finally {
       setSaving(false)
     }
+  }
+
+  function cancelPending() {
+    setPending(null)
+    setNoteDraft('')
+    window.getSelection()?.removeAllRanges()
   }
 
   function onContentClick(e: React.MouseEvent) {
@@ -117,7 +150,6 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
     try {
       await api.deleteHighlight(id)
     } catch {
-      // Re-fetch to restore truth if the delete failed.
       api.listItemHighlights(item.id).then(setHighlights).catch(() => {})
     }
   }
@@ -161,25 +193,21 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
           </a>
         )}
 
-        <p className="mt-4 text-xs text-neutral-400">
-          Select text to highlight it.
-        </p>
+        <p className="mt-4 text-xs text-neutral-400">Select text to highlight it.</p>
 
         <div
           ref={contentRef}
           className="reader-content mt-2 border-t border-neutral-100 pt-6"
-          onMouseUp={onSelectionEnd}
-          onTouchEnd={onSelectionEnd}
           onClick={onContentClick}
         />
 
-        {/* Toolbar shown while a selection is active. */}
-        {selection && (
+        {/* Toolbar shown while a selection is pending. */}
+        {pending && (
           <div
             className="fixed z-[60] flex items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg"
             style={{
-              top: Math.max(8, selection.rect.top - 52),
-              left: Math.min(selection.rect.left, window.innerWidth - 240),
+              top: Math.max(8, pending.rect.top - 52),
+              left: Math.max(8, Math.min(pending.rect.left, window.innerWidth - 260)),
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -187,7 +215,7 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
               placeholder="note (optional)"
-              className="w-32 rounded border border-neutral-200 px-2 py-1 text-xs outline-none focus:border-neutral-400"
+              className="w-28 rounded border border-neutral-200 px-2 py-1 text-xs outline-none focus:border-neutral-400"
             />
             {COLOR_KEYS.map((color) => (
               <button
@@ -200,6 +228,14 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
                 style={{ backgroundColor: HIGHLIGHT_COLORS[color] }}
               />
             ))}
+            <button
+              type="button"
+              onClick={cancelPending}
+              className="ml-1 px-1 text-sm text-neutral-400 hover:text-neutral-700"
+              title="Cancel"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -209,7 +245,7 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
             className="fixed z-[60] max-w-xs rounded-lg border border-neutral-200 bg-white p-3 shadow-lg"
             style={{
               top: Math.min(popover.y + 8, window.innerHeight - 120),
-              left: Math.min(popover.x, window.innerWidth - 240),
+              left: Math.max(8, Math.min(popover.x, window.innerWidth - 240)),
             }}
             onClick={(e) => e.stopPropagation()}
           >
