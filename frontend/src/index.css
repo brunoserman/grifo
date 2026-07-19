@@ -64,7 +64,3 @@ body {
   outline: 2px solid rgba(0, 0, 0, 0.35);
   outline-offset: 1px;
 }
-.reader-content mark.hl.hl-preview {
-  outline: 1px dashed rgba(37, 99, 235, 0.7);
-  cursor: default;
-}

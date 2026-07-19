@@ -21,8 +21,6 @@ export type CapturedSelection = {
   text: string
   prefix: string
   suffix: string
-  start: number
-  end: number
   rect: DOMRect
 }
 
@@ -42,7 +40,7 @@ function offsetFromStart(
 }
 
 // Read the current selection as a quote with context, if it is inside the
-// container and not empty.
+// container and not empty. Does not touch the DOM.
 export function captureSelection(container: HTMLElement): CapturedSelection | null {
   const selection = window.getSelection()
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null
@@ -62,8 +60,6 @@ export function captureSelection(container: HTMLElement): CapturedSelection | nu
     text,
     prefix: full.slice(Math.max(0, start - CONTEXT), start),
     suffix: full.slice(end, end + CONTEXT),
-    start,
-    end,
     rect: range.getBoundingClientRect(),
   }
 }
@@ -111,11 +107,9 @@ function textNodesIn(root: HTMLElement): Text[] {
   return nodes
 }
 
-type WrapStyle = { className: string; background: string; hlId?: string }
-
 // Wrap the [start, end] slice of the container's text in <mark> elements. A
 // span crossing element boundaries produces one <mark> per text node.
-function wrap(container: HTMLElement, start: number, end: number, style: WrapStyle) {
+function wrap(container: HTMLElement, start: number, end: number, hl: Highlight) {
   const nodes = textNodesIn(container)
   const targets: { node: Text; from: number; to: number }[] = []
   let acc = 0
@@ -133,22 +127,22 @@ function wrap(container: HTMLElement, start: number, end: number, style: WrapSty
     range.setStart(t.node, t.from)
     range.setEnd(t.node, t.to)
     const mark = document.createElement('mark')
-    mark.className = style.className
-    if (style.hlId) mark.dataset.hlId = style.hlId
-    mark.style.backgroundColor = style.background
+    mark.className = 'hl'
+    mark.dataset.hlId = hl.id
+    mark.style.backgroundColor = HIGHLIGHT_COLORS[hl.color] ?? HIGHLIGHT_COLORS.yellow
     // surroundContents is safe here: each target is within a single text node.
     range.surroundContents(mark)
   }
 }
 
 // Reset the container to the clean HTML, then paint every highlight that can be
-// re-found, plus an optional live preview of the passage being highlighted.
-// Returns the ids that could not be anchored (kept in the list, not painted).
+// re-found. Returns the ids that could not be anchored (kept in the list but
+// not painted). Only call this when there is no selection in progress: it
+// rebuilds the content, which would corrupt an active selection.
 export function paintHighlights(
   container: HTMLElement,
   html: string,
-  highlights: Highlight[],
-  preview?: { start: number; end: number } | null
+  highlights: Highlight[]
 ): string[] {
   container.innerHTML = html
   const full = container.textContent ?? ''
@@ -161,27 +155,10 @@ export function paintHighlights(
       continue
     }
     try {
-      wrap(container, found.start, found.end, {
-        className: 'hl',
-        background: HIGHLIGHT_COLORS[hl.color] ?? HIGHLIGHT_COLORS.yellow,
-        hlId: hl.id,
-      })
+      wrap(container, found.start, found.end, hl)
     } catch {
       // Overlapping or otherwise unrepresentable range: skip painting.
       unanchored.push(hl.id)
-    }
-  }
-
-  // The preview keeps the passage visibly marked even after the browser clears
-  // its own text selection (which it does the moment a note field is focused).
-  if (preview && preview.end > preview.start) {
-    try {
-      wrap(container, preview.start, preview.end, {
-        className: 'hl hl-preview',
-        background: 'rgba(37, 99, 235, 0.18)',
-      })
-    } catch {
-      /* ignore preview paint failure */
     }
   }
   return unanchored
