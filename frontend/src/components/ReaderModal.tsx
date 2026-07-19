@@ -83,16 +83,13 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
     }
   }, [])
 
-  // Repaint whenever the content, the highlights, or the pending preview change.
+  // Repaint only when the content or the saved highlights change — never on the
+  // pending selection. Repainting rebuilds the DOM, which would corrupt a
+  // selection the user is still dragging (that was the earlier bug).
   useEffect(() => {
     const container = contentRef.current
     if (!container) return
-    paintHighlights(
-      container,
-      bodyHtml,
-      highlights,
-      pending ? { start: pending.start, end: pending.end } : null
-    )
+    paintHighlights(container, bodyHtml, highlights)
 
     if (scrollToHighlightId) {
       const mark = container.querySelector<HTMLElement>(
@@ -104,7 +101,7 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
         setTimeout(() => mark.classList.remove('hl-flash'), 1500)
       }
     }
-  }, [bodyHtml, highlights, pending, scrollToHighlightId])
+  }, [bodyHtml, highlights, scrollToHighlightId])
 
   async function saveHighlight(color: string) {
     if (!pending || saving) return
@@ -201,41 +198,53 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
           onClick={onContentClick}
         />
 
-        {/* Toolbar shown while a selection is pending. */}
+        {/* Toolbar shown while a selection is pending. The quote is shown here as
+            text feedback, so nothing needs to be painted into the article while
+            the user is still selecting or typing a note. */}
         {pending && (
           <div
-            className="fixed z-[60] flex items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg"
+            className="fixed z-[60] w-64 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg"
             style={{
-              top: Math.max(8, pending.rect.top - 52),
-              left: Math.max(8, Math.min(pending.rect.left, window.innerWidth - 260)),
+              top: Math.min(
+                Math.max(8, pending.rect.bottom + 8),
+                window.innerHeight - 130
+              ),
+              left: Math.max(8, Math.min(pending.rect.left, window.innerWidth - 264)),
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <input
-              value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
-              placeholder="note (optional)"
-              className="w-28 rounded border border-neutral-200 px-2 py-1 text-xs outline-none focus:border-neutral-400"
-            />
-            {COLOR_KEYS.map((color) => (
-              <button
-                key={color}
-                type="button"
-                title={color}
-                disabled={saving}
-                onClick={() => saveHighlight(color)}
-                className="h-6 w-6 rounded-full border border-black/10 hover:scale-110"
-                style={{ backgroundColor: HIGHLIGHT_COLORS[color] }}
+            <p className="mb-2 line-clamp-2 border-l-2 border-neutral-300 pl-2 text-xs italic text-neutral-500">
+              {pending.text}
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                placeholder="note (optional)"
+                className="min-w-0 flex-1 rounded border border-neutral-200 px-2 py-1 text-xs outline-none focus:border-neutral-400"
               />
-            ))}
-            <button
-              type="button"
-              onClick={cancelPending}
-              className="ml-1 px-1 text-sm text-neutral-400 hover:text-neutral-700"
-              title="Cancel"
-            >
-              ✕
-            </button>
+              <button
+                type="button"
+                onClick={cancelPending}
+                className="px-1 text-sm text-neutral-400 hover:text-neutral-700"
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              {COLOR_KEYS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  title={`Save (${color})`}
+                  disabled={saving}
+                  onClick={() => saveHighlight(color)}
+                  className="h-6 w-6 rounded-full border border-black/10 hover:scale-110"
+                  style={{ backgroundColor: HIGHLIGHT_COLORS[color] }}
+                />
+              ))}
+            </div>
           </div>
         )}
 
