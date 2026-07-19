@@ -7,27 +7,17 @@ type Props = {
   onOpenSource: (itemId: string, highlightId: string | null) => void
 }
 
-// One search field over articles, notes and highlights, ranked by relevance,
-// with author/site filters. The prefix wildcard on the last word is added by
-// the Worker, so partial words match without stemming.
+// One search field over every field of every article, note and highlight —
+// queued or read. The prefix wildcard on the last word is added by the Worker,
+// so partial words match without stemming.
 export default function SearchView({ onOpenSource }: Props) {
   const [q, setQ] = useState('')
-  const [author, setAuthor] = useState('')
-  const [site, setSite] = useState('')
-  const [facets, setFacets] = useState<{ authors: string[]; sites: string[] }>({
-    authors: [],
-    sites: [],
-  })
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    api.getFacets().then(setFacets).catch(() => {})
-  }, [])
-
-  // Debounced search on any of query/author/site.
+  // Debounced search.
   useEffect(() => {
     if (!q.trim()) {
       setResults([])
@@ -39,7 +29,7 @@ export default function SearchView({ onOpenSource }: Props) {
       setLoading(true)
       setError(null)
       api
-        .search(q, author || null, site || null)
+        .search(q)
         .then((r) => {
           setResults(r.results)
           setSearched(true)
@@ -48,7 +38,7 @@ export default function SearchView({ onOpenSource }: Props) {
         .finally(() => setLoading(false))
     }, 250)
     return () => clearTimeout(timer)
-  }, [q, author, site])
+  }, [q])
 
   return (
     <div>
@@ -56,37 +46,10 @@ export default function SearchView({ onOpenSource }: Props) {
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search your articles, notes and highlights…"
+        placeholder="Search text, author, site — anything…"
         autoFocus
         className="w-full rounded-lg border border-neutral-300 bg-white px-4 py-2.5 outline-none focus:border-neutral-500"
       />
-
-      <div className="mt-2 flex flex-wrap gap-2">
-        <select
-          value={author}
-          onChange={(e) => setAuthor(e.target.value)}
-          className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-neutral-500"
-        >
-          <option value="">Any author</option>
-          {facets.authors.map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
-          ))}
-        </select>
-        <select
-          value={site}
-          onChange={(e) => setSite(e.target.value)}
-          className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-neutral-500"
-        >
-          <option value="">Any site</option>
-          {facets.sites.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </div>
 
       {error && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">

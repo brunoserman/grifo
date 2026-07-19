@@ -46,27 +46,13 @@ type Row = {
   rank: number
 }
 
-// GET /api/search?q=...&author=...&site=...
-// One ranked result set across articles, notes and highlights.
+// GET /api/search?q=...
+// One ranked result set across every article, note and highlight — whatever
+// their status (queued or read). The query itself matches any indexed field:
+// title, author, site and content for items; text and note for highlights.
 search.get('/search', async (c) => {
   const match = buildMatchQuery(c.req.query('q') ?? '')
   if (!match) return c.json({ results: [] })
-
-  const author = c.req.query('author')?.trim() || null
-  const site = c.req.query('site')?.trim() || null
-
-  // Filters apply to the parent item, uniformly for item and highlight hits.
-  const filters: string[] = []
-  const filterBinds: string[] = []
-  if (author) {
-    filters.push('i.author = ?')
-    filterBinds.push(author)
-  }
-  if (site) {
-    filters.push('i.site_name = ?')
-    filterBinds.push(site)
-  }
-  const filterSql = filters.length ? ` AND ${filters.join(' AND ')}` : ''
 
   // bm25() ranks by relevance (smaller is better). char(57344/57345) are the
   // OPEN/CLOSE markers; snippet column -1 lets FTS5 pick the best matching one.
@@ -84,7 +70,7 @@ search.get('/search', async (c) => {
         bm25(items_fts) AS rank
       FROM items_fts
       JOIN items i ON i.id = items_fts.item_id
-      WHERE items_fts MATCH ?${filterSql}
+      WHERE items_fts MATCH ?
       UNION ALL
       SELECT
         'highlight' AS kind,
@@ -99,17 +85,15 @@ search.get('/search', async (c) => {
       FROM highlights_fts
       JOIN highlights h ON h.id = highlights_fts.highlight_id
       JOIN items i ON i.id = h.item_id
-      WHERE highlights_fts MATCH ?${filterSql}
+      WHERE highlights_fts MATCH ?
     )
     ORDER BY rank ASC
     LIMIT 50
   `
 
-  const binds = [match, ...filterBinds, match, ...filterBinds]
-
   try {
     const { results } = await c.env.DB.prepare(sql)
-      .bind(...binds)
+      .bind(match, match)
       .all<Row>()
     return c.json({
       results: results.map((r) => ({
@@ -129,19 +113,4 @@ search.get('/search', async (c) => {
       400
     )
   }
-})
-
-// GET /api/facets
-// Distinct authors and sites, to populate the search filters.
-search.get('/facets', async (c) => {
-  const authors = await c.env.DB.prepare(
-    `SELECT DISTINCT author FROM items WHERE author IS NOT NULL AND author <> '' ORDER BY author`
-  ).all<{ author: string }>()
-  const sites = await c.env.DB.prepare(
-    `SELECT DISTINCT site_name FROM items WHERE site_name IS NOT NULL AND site_name <> '' ORDER BY site_name`
-  ).all<{ site_name: string }>()
-  return c.json({
-    authors: authors.results.map((r) => r.author),
-    sites: sites.results.map((r) => r.site_name),
-  })
 })

@@ -77,12 +77,7 @@ export const deleteHighlight = (id: string) =>
 export const listAllHighlights = () =>
   request<HighlightWithItem[]>('/api/highlights')
 
-export const search = (q: string, author: string | null, site: string | null) => {
-  const params = new URLSearchParams({ q })
-  if (author) params.set('author', author)
-  if (site) params.set('site', site)
-  return request<{ results: SearchResult[] }>(`/api/search?${params.toString()}`)
-}
-
-export const getFacets = () =>
-  request<{ authors: string[]; sites: string[] }>('/api/facets')
+export const search = (q: string) =>
+  request<{ results: SearchResult[] }>(
+    `/api/search?q=${encodeURIComponent(q)}`
+  )
