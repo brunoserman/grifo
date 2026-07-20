@@ -102,11 +102,12 @@ So: use search for two weeks, look at the queries that returned nothing, and see
 
 ## What doesn't work yet
 
-- Phase 1 is what exists. See the roadmap below.
+- Phases 1-3 are live: the queue, reading-view highlights, and search. See the roadmap below.
+- No in-app PDF viewing or in-PDF passage capture yet (phase 4, deferred). PDFs upload and open, but there's no reader for them inside the app.
+- No folders (phase 5, deferred — and maybe never; see the decision above).
 - No typo tolerance and no synonyms. Exact word matching only.
 - No stemming, per the decision above.
 - Languages without spaces between words (Chinese, Japanese, Korean, Thai) are not indexed correctly.
-- PDF highlights have no persistent marker in the document.
 - Cloudflare D1 can't export a database that has full-text search tables in it. Backups require dropping the search tables, exporting, and recreating them. Documented because losing data is literally the problem this app exists to solve.
 
 ## Architecture
@@ -126,7 +127,7 @@ Three tables: `items`, `folders`, `highlights`. Folders nest through a self-refe
 
 Highlights are anchored by quote plus surrounding context, in the spirit of the W3C Web Annotation model, never by DOM position. DOM positions break the first time the page is re-extracted.
 
-Full spec and reasoning: [`read-later-spec.md`](./read-later-spec.md).
+Full spec and reasoning: [`SPEC.md`](./SPEC.md).
 
 ## Cost
 
@@ -134,12 +135,12 @@ Zero. Not "free tier for now" zero, but zero: single user, on free tiers with no
 
 ## Roadmap
 
-- [ ] **1. The queue.** Save with extraction, upload PDFs, paste notes. Drag to reorder. Mark as read.
-- [ ] **2. Reader and highlights.** Clean reading view, select to highlight, aggregated highlights page.
-- [ ] **3. Search.** Unified results across articles, notes and highlights. Filter by author and site.
-- [ ] **4. PDF.** In-app viewing and passage capture with page numbers.
-- [ ] **5. Folders, if I still miss them.**
-- [ ] **6. Quick capture.** iOS Shortcut, browser extension, Android share target.
+- [x] **1. The queue.** Save with extraction, upload PDFs, paste notes. Drag to reorder. Mark as read.
+- [x] **2. Reader and highlights.** Reading view (full screen on mobile, modal on desktop), select to highlight, aggregated highlights page.
+- [x] **3. Search.** One field, unified results across articles, notes and highlights, ranked, with the matching snippet.
+- [ ] **4. PDF.** In-app viewing and passage capture with page numbers. *(Deferred.)*
+- [ ] **5. Folders, if I still miss them.** *(Deferred.)*
+- [x] **6. Save from the phone.** Android share-sheet target saves a shared link. *(Browser extension out of scope.)*
 
 Each phase is usable on its own. Phase 1 alone satisfies success criterion 1.
 
@@ -155,7 +156,18 @@ A *grifo* is also the griffin of myth, whose job was guarding accumulated treasu
 
 I'm a Product person, not an engineer. This was built with Claude Code, and the interesting artifact here isn't the code. It's the decision record: what was considered, what was rejected, what was cut and why.
 
-Decisions live in [`docs/decisions/`](./docs/decisions), written as they were made rather than reconstructed afterwards.
+Decisions live in [`docs/decisions/`](./docs/decisions), written as they were made rather than reconstructed afterwards:
+
+- [0000. Record architecture decisions](./docs/decisions/0000-record-architecture-decisions.md)
+- [0001. Extract article text at save time](./docs/decisions/0001-extract-article-text-at-save-time.md)
+- [0002. Drag to prioritize, not priority labels](./docs/decisions/0002-drag-to-prioritize-not-labels.md)
+- [0003. Search with FTS5, before folders, multi-language over stemming](./docs/decisions/0003-search-with-fts5-before-folders.md)
+- [0004. Zero-cost Cloudflare stack, deployed from GitHub](./docs/decisions/0004-zero-cost-cloudflare-stack.md)
+- [0005. No database triggers; the Worker syncs the search index](./docs/decisions/0005-no-database-triggers.md)
+- [0006. Extraction failure is never a dead end](./docs/decisions/0006-extraction-failure-is-never-a-dead-end.md)
+- [0007. A PWA needs an explicit manifest and correct static-file serving](./docs/decisions/0007-pwa-needs-an-explicit-manifest.md)
+- [0008. Authentication via Cloudflare Access, no password](./docs/decisions/0008-auth-via-cloudflare-access.md)
+- [0009. Mobile reading is a dedicated screen, not a modal](./docs/decisions/0009-mobile-reading-is-a-dedicated-screen.md)
 
 ## License
 

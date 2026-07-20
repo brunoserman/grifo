@@ -138,12 +138,12 @@ The cut: select a passage in a PDF and Grifo stores the text, the page and the n
 
 Each phase must be usable on its own. A personal project that only works at the end never reaches the end.
 
-1. **The queue.** Save link with extraction, upload PDF, paste note. Drag-to-reorder list. Mark as read. Password-protected access. The search index is created here, with no screen.
-2. **Reader and highlights.** Clean reading view, select text to highlight, aggregated highlights page linking back to sources.
-3. **Search.** One field, unified results across articles, notes and highlights, ranked by relevance, with the matching snippet. Filter by author and site. Automatic prefix on the last word.
-4. **PDF.** In-app viewing and passage capture with page number, per the cut above.
-5. **Folders, if still missed.** Nested tree, move item, navigation.
-6. **Quick capture.** Save from mobile via the share sheet, and from the browser via an extension.
+1. **The queue.** — *Done.* Save link with extraction, upload PDF, paste note. Drag-to-reorder list. Mark as read. Password-protected access. The search index is created here, with no screen.
+2. **Reader and highlights.** — *Done.* Clean reading view — a dedicated full-screen screen on mobile with its own URL (`/read/:id`), a centered modal on desktop — select text to highlight, aggregated highlights page linking back to sources.
+3. **Search.** — *Done.* One field, unified results across articles, notes and highlights, ranked by relevance, with the matching snippet. The single query matches every field, including author and site. Automatic prefix on the last word.
+4. **PDF.** — *Deferred.* In-app viewing and passage capture with page number, per the cut above.
+5. **Folders, if still missed.** — *Deferred.* Nested tree, move item, navigation.
+6. **Quick capture.** — *Partly done:* saving from mobile via the Android share sheet ships (a PWA `share_target` at `/share`). The browser extension is out of scope.
 
 Phase 1 is already a product: on its own it satisfies success criterion 1.
 
