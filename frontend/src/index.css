@@ -6,53 +6,111 @@ body {
   @apply bg-neutral-50 text-neutral-900 antialiased;
 }
 
-/* Typography for the reading view (extracted article HTML or note text). */
+/* Typography for the reading view (extracted article HTML or note text).
+   A single comfortable column, capped near 68 characters and centered, with
+   generous line-height and spacing — a proper reader, like Kindle/Safari
+   Reader. */
 .reader-content {
-  @apply leading-relaxed text-neutral-800;
+  max-width: 68ch;
+  margin-inline: auto;
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: #33373d;
+  overflow-wrap: break-word;
+}
+.reader-content > *:first-child {
+  margin-top: 0;
 }
 .reader-content p {
-  @apply my-4;
+  margin: 1.25em 0;
 }
 .reader-content h1,
 .reader-content h2,
-.reader-content h3 {
-  @apply mb-3 mt-6 font-semibold text-neutral-900;
+.reader-content h3,
+.reader-content h4 {
+  margin: 1.8em 0 0.6em;
+  line-height: 1.3;
+  font-weight: 600;
+  color: #1a1c1f;
 }
 .reader-content h1 {
-  @apply text-2xl;
+  font-size: 1.6em;
 }
 .reader-content h2 {
-  @apply text-xl;
+  font-size: 1.35em;
 }
 .reader-content h3 {
-  @apply text-lg;
+  font-size: 1.15em;
+}
+.reader-content h4 {
+  font-size: 1.05em;
 }
 .reader-content a {
-  @apply text-blue-700 underline;
+  color: #1d4ed8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
-.reader-content img {
-  @apply my-4 max-w-full rounded;
+.reader-content img,
+.reader-content video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.5em auto;
+  border-radius: 6px;
+}
+.reader-content ul,
+.reader-content ol {
+  margin: 1.25em 0;
+  padding-left: 1.6em;
 }
 .reader-content ul {
-  @apply my-4 list-disc pl-6;
+  list-style: disc;
 }
 .reader-content ol {
-  @apply my-4 list-decimal pl-6;
+  list-style: decimal;
 }
 .reader-content li {
-  @apply my-1;
+  margin: 0.4em 0;
 }
 .reader-content blockquote {
-  @apply my-4 border-l-4 border-neutral-300 pl-4 italic text-neutral-600;
+  margin: 1.5em 0;
+  padding: 0.2em 0 0.2em 1em;
+  border-left: 3px solid #d4d4d8;
+  color: #52525b;
+  font-style: italic;
 }
 .reader-content pre {
-  @apply my-4 overflow-x-auto rounded bg-neutral-100 p-3 text-sm;
+  margin: 1.5em 0;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: #f4f4f5;
+  padding: 0.9em 1em;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+.reader-content code {
+  background: #f4f4f5;
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+  font-size: 0.9em;
+}
+.reader-content pre code {
+  background: none;
+  padding: 0;
+}
+.reader-content hr {
+  margin: 2em 0;
+  border: 0;
+  border-top: 1px solid #e5e5e5;
 }
 .reader-content figure {
-  @apply my-4;
+  margin: 1.5em 0;
 }
 .reader-content figcaption {
-  @apply mt-1 text-sm text-neutral-500;
+  margin-top: 0.5em;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #71717a;
 }
 .reader-content mark.hl {
   border-radius: 2px;
