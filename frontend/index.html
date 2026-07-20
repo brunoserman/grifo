@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Grifo</title>
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- use-credentials so the manifest (and its icons) are fetched WITH the
+         Cloudflare Access cookie. Without it, Chrome's credential-less fetch is
+         answered by Access with a 302 to login, and the PWA won't install. -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
     <meta name="theme-color" content="#171717" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
   </head>
