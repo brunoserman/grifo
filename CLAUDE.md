@@ -35,6 +35,8 @@ Cloudflare Workers + Hono, D1 (plain SQL, no ORM), R2, React + Vite + Tailwind.
 
 ## Current state
 
-Phases 1-3 (queue, highlights, search) shipped. Reading view is a proper reader,
-full-screen on mobile via a /read/:id route; a PWA share_target (/share) saves
-shared links. Client routing uses react-router.
+Phases 1-3 complete: the queue, reading-view highlights + aggregated highlights
+page, and search. The reading view is a dedicated full-screen screen on mobile
+(its own `/read/:id` route) and a modal on desktop; client routing uses
+react-router. A PWA `share_target` (`/share`) saves links shared from Android.
+Deferred: phase 4 (in-app PDF viewing and passage capture) and phase 5 (folders).
