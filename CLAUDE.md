@@ -35,4 +35,6 @@ Cloudflare Workers + Hono, D1 (plain SQL, no ORM), R2, React + Vite + Tailwind.
 
 ## Current state
 
-Phase 1 (queue) and phase 2 (highlights) shipped. Phase 3 (search) in progress.
+Phases 1-3 (queue, highlights, search) shipped. Reading view is a proper reader,
+full-screen on mobile via a /read/:id route; a PWA share_target (/share) saves
+shared links. Client routing uses react-router.

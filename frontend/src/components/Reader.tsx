@@ -21,7 +21,9 @@ function escapeHtml(s: string): string {
 
 const COLOR_KEYS = Object.keys(HIGHLIGHT_COLORS)
 
-export default function ReaderModal({ item, onClose, scrollToHighlightId }: Props) {
+// The reading view. Full screen on mobile (its own route, with a back arrow),
+// a centered modal on desktop.
+export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
   const contentRef = useRef<HTMLDivElement>(null)
   const [highlights, setHighlights] = useState<Highlight[]>([])
   const [pending, setPending] = useState<CapturedSelection | null>(null)
@@ -85,7 +87,7 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
 
   // Repaint only when the content or the saved highlights change — never on the
   // pending selection. Repainting rebuilds the DOM, which would corrupt a
-  // selection the user is still dragging (that was the earlier bug).
+  // selection the user is still dragging.
   useEffect(() => {
     const container = contentRef.current
     if (!container) return
@@ -151,20 +153,52 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
     }
   }
 
+  // Clicking outside the article closes — but only on desktop, where there is a
+  // backdrop. On mobile the view is full screen; only the back arrow closes.
+  function onBackdropClick() {
+    if (window.matchMedia('(min-width: 640px)').matches) onClose()
+  }
+
   const meta = [item.author, item.site_name, readingTime(item), formatDate(item.saved_at)]
     .filter(Boolean)
     .join(' · ')
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/40 p-4"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white sm:block sm:bg-black/40"
+      onClick={onBackdropClick}
     >
+      {/* Mobile top bar with a back arrow. */}
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-neutral-200 bg-white px-3 py-2.5 sm:hidden">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Back to the list"
+          className="rounded-md p-1 text-neutral-700 hover:bg-neutral-100"
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 12H5" />
+            <path d="M12 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <span className="truncate font-medium text-neutral-900">{item.title}</span>
+      </div>
+
       <article
-        className="mx-auto my-6 max-w-2xl rounded-xl bg-white p-6 shadow-xl sm:p-8"
+        className="mx-auto w-full max-w-2xl flex-1 bg-white px-5 py-6 sm:my-6 sm:flex-none sm:rounded-xl sm:px-8 sm:py-8 sm:shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-start justify-between gap-4">
+        {/* Desktop header with a title and Close button. */}
+        <div className="mb-4 hidden items-start justify-between gap-4 sm:flex">
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
             {item.title}
           </h1>
@@ -176,6 +210,11 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
             Close
           </button>
         </div>
+
+        {/* On mobile the title is in the top bar; show it here too, larger. */}
+        <h1 className="mb-2 text-2xl font-semibold tracking-tight text-neutral-900 sm:hidden">
+          {item.title}
+        </h1>
 
         {meta && <p className="text-sm text-neutral-500">{meta}</p>}
 
@@ -197,82 +236,79 @@ export default function ReaderModal({ item, onClose, scrollToHighlightId }: Prop
           className="reader-content mt-2 border-t border-neutral-100 pt-6"
           onClick={onContentClick}
         />
+      </article>
 
-        {/* Toolbar shown while a selection is pending. The quote is shown here as
-            text feedback, so nothing needs to be painted into the article while
-            the user is still selecting or typing a note. */}
-        {pending && (
-          <div
-            className="fixed z-[60] w-64 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg"
-            style={{
-              top: Math.min(
-                Math.max(8, pending.rect.bottom + 8),
-                window.innerHeight - 130
-              ),
-              left: Math.max(8, Math.min(pending.rect.left, window.innerWidth - 264)),
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="mb-2 line-clamp-2 border-l-2 border-neutral-300 pl-2 text-xs italic text-neutral-500">
-              {pending.text}
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
-                placeholder="note (optional)"
-                className="min-w-0 flex-1 rounded border border-neutral-200 px-2 py-1 text-xs outline-none focus:border-neutral-400"
-              />
-              <button
-                type="button"
-                onClick={cancelPending}
-                className="px-1 text-sm text-neutral-400 hover:text-neutral-700"
-                title="Cancel"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              {COLOR_KEYS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  title={`Save (${color})`}
-                  disabled={saving}
-                  onClick={() => saveHighlight(color)}
-                  className="h-6 w-6 rounded-full border border-black/10 hover:scale-110"
-                  style={{ backgroundColor: HIGHLIGHT_COLORS[color] }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Popover shown when an existing highlight is clicked. */}
-        {popover && (
-          <div
-            className="fixed z-[60] max-w-xs rounded-lg border border-neutral-200 bg-white p-3 shadow-lg"
-            style={{
-              top: Math.min(popover.y + 8, window.innerHeight - 120),
-              left: Math.max(8, Math.min(popover.x, window.innerWidth - 240)),
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {popover.hl.note ? (
-              <p className="mb-2 text-sm text-neutral-700">{popover.hl.note}</p>
-            ) : (
-              <p className="mb-2 text-sm italic text-neutral-400">No note</p>
-            )}
+      {/* Toolbar shown while a selection is pending. The quote is shown here as
+          text feedback, so nothing is painted into the article while the user is
+          still selecting or typing a note. */}
+      {pending && (
+        <div
+          className="fixed z-[60] w-64 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg"
+          style={{
+            top: Math.min(Math.max(8, pending.rect.bottom + 8), window.innerHeight - 130),
+            left: Math.max(8, Math.min(pending.rect.left, window.innerWidth - 264)),
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="mb-2 line-clamp-2 border-l-2 border-neutral-300 pl-2 text-xs italic text-neutral-500">
+            {pending.text}
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              placeholder="note (optional)"
+              className="min-w-0 flex-1 rounded border border-neutral-200 px-2 py-1 text-xs outline-none focus:border-neutral-400"
+            />
             <button
               type="button"
-              onClick={() => removeHighlight(popover.hl.id)}
-              className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50"
+              onClick={cancelPending}
+              className="px-1 text-sm text-neutral-400 hover:text-neutral-700"
+              title="Cancel"
             >
-              Remove highlight
+              ✕
             </button>
           </div>
-        )}
-      </article>
+          <div className="mt-2 flex items-center gap-2">
+            {COLOR_KEYS.map((color) => (
+              <button
+                key={color}
+                type="button"
+                title={`Save (${color})`}
+                disabled={saving}
+                onClick={() => saveHighlight(color)}
+                className="h-6 w-6 rounded-full border border-black/10 hover:scale-110"
+                style={{ backgroundColor: HIGHLIGHT_COLORS[color] }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Popover shown when an existing highlight is clicked. */}
+      {popover && (
+        <div
+          className="fixed z-[60] max-w-xs rounded-lg border border-neutral-200 bg-white p-3 shadow-lg"
+          style={{
+            top: Math.min(popover.y + 8, window.innerHeight - 120),
+            left: Math.max(8, Math.min(popover.x, window.innerWidth - 240)),
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {popover.hl.note ? (
+            <p className="mb-2 text-sm text-neutral-700">{popover.hl.note}</p>
+          ) : (
+            <p className="mb-2 text-sm italic text-neutral-400">No note</p>
+          )}
+          <button
+            type="button"
+            onClick={() => removeHighlight(popover.hl.id)}
+            className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50"
+          >
+            Remove highlight
+          </button>
+        </div>
+      )}
     </div>
   )
 }
