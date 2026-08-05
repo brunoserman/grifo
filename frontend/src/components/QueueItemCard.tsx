@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { Item } from '../types'
 import { readingTime, formatDate, typeLabel } from '../format'
 import FavoriteButton from './FavoriteButton'
+import TagEditor from './TagEditor'
 
 type Props = {
   item: Item
@@ -10,6 +11,7 @@ type Props = {
   onMarkRead: (id: string) => void
   onDelete: (id: string) => void
   onToggleFavorite: (item: Item) => void
+  onSetTags: (id: string, tags: string[]) => void
 }
 
 // One card in the queue. The whole card is the drag handle.
@@ -19,6 +21,7 @@ export default function QueueItemCard({
   onMarkRead,
   onDelete,
   onToggleFavorite,
+  onSetTags,
 }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
@@ -58,6 +61,8 @@ export default function QueueItemCard({
           </p>
         )}
       </div>
+
+      <TagEditor tags={item.tags} onSave={(tags) => onSetTags(item.id, tags)} />
 
       {/* onPointerDown stops the drag sensor so a button press never drags. */}
       <div className="flex flex-wrap gap-2">

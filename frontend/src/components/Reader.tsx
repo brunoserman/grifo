@@ -348,7 +348,7 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
       {pending && (
         <div
           className={
-            'fixed z-[60] rounded-lg border border-neutral-200 bg-white p-2 shadow-lg ' +
+            'fixed z-[60] select-none rounded-lg border border-neutral-200 bg-white p-2 shadow-lg ' +
             (isMobile ? 'inset-x-2 bottom-2' : 'w-64')
           }
           style={
@@ -372,7 +372,7 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
               placeholder="note (optional)"
-              className="min-w-0 flex-1 rounded border border-neutral-200 px-2 py-1 text-xs outline-none focus:border-neutral-400"
+              className="min-w-0 flex-1 select-text rounded border border-neutral-200 px-2 py-1 text-xs outline-none focus:border-neutral-400"
             />
             <button
               type="button"
@@ -399,7 +399,7 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
       {popover && (
         <div
           className={
-            'fixed z-[60] rounded-lg border border-neutral-200 bg-white p-3 shadow-lg ' +
+            'fixed z-[60] select-none rounded-lg border border-neutral-200 bg-white p-3 shadow-lg ' +
             (isMobile ? 'inset-x-2 bottom-2' : 'max-w-xs')
           }
           style={

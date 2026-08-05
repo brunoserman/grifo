@@ -28,6 +28,9 @@ export type Item = {
   extraction_error: string | null
   saved_at: number
   read_at: number | null
+  // Flat, freeform tags. Not a column on items — stored in item_tags and
+  // attached when items are read out (see routes/items.ts).
+  tags: string[]
 }
 
 // A row of the highlights table. Anchored by quote + prefix + suffix, never by

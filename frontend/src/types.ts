@@ -21,6 +21,14 @@ export type Item = {
   extraction_error: string | null
   saved_at: number
   read_at: number | null
+  // Flat, freeform tags attached to the item, sorted alphabetically.
+  tags: string[]
+}
+
+// A tag and how many items carry it, for the filter bar.
+export type TagCount = {
+  tag: string
+  count: number
 }
 
 // A highlight, anchored by quote + prefix + suffix.

@@ -1,4 +1,4 @@
-import type { Item, Highlight, HighlightWithItem, SearchResult } from './types'
+import type { Item, Highlight, HighlightWithItem, SearchResult, TagCount } from './types'
 
 // Thin wrapper around the /api endpoints. Every call throws on a non-2xx
 // response so callers can surface the error to the user.
@@ -20,10 +20,26 @@ const json = (body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 })
 
-export const listItems = (status: 'queued' | 'read' = 'queued') =>
-  request<Item[]>(`/api/items?status=${status}`)
+export const listItems = (
+  status: 'queued' | 'read' = 'queued',
+  tag?: string | null
+) => {
+  const params = new URLSearchParams({ status })
+  if (tag) params.set('tag', tag)
+  return request<Item[]>(`/api/items?${params.toString()}`)
+}
 
 export const listFavorites = () => request<Item[]>('/api/items?favorite=1')
+
+export const listTags = () => request<TagCount[]>('/api/tags')
+
+// Replace an item's whole tag set with the given list.
+export const setItemTags = (id: string, tags: string[]) =>
+  request<Item>(`/api/items/${id}/tags`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ tags }),
+  })
 
 export const saveLink = (url: string) =>
   request<Item>('/api/items', json({ type: 'link', url }))

@@ -1,5 +1,6 @@
-// Generates placeholder PWA icons with no image dependencies: a dark square
-// with an amber bar across it, evoking a highlight (grifo). Re-run with
+// Generates the PWA icons and favicon with no image dependencies: a dark square
+// with a highlight-yellow bar across it, evoking a highlight (grifo). The bar
+// reuses the exact highlight yellow (#fde68a) from index.css. Re-run with
 // `node frontend/scripts/generate-icons.mjs` to regenerate.
 import { deflateSync } from 'node:zlib'
 import { writeFileSync, mkdirSync } from 'node:fs'
@@ -52,10 +53,10 @@ function makePng(size) {
       const i = rowStart + 1 + x * 3
       const inBar =
         x > margin && x < size - margin && y > size * 0.42 && y < size * 0.58
-      // Dark background (#171717) with an amber bar (#f59e0b).
-      raw[i] = inBar ? 0xf5 : 0x17
-      raw[i + 1] = inBar ? 0x9e : 0x17
-      raw[i + 2] = inBar ? 0x0b : 0x17
+      // Dark background (#171717) with a highlight-yellow bar (#fde68a).
+      raw[i] = inBar ? 0xfd : 0x17
+      raw[i + 1] = inBar ? 0xde : 0x17
+      raw[i + 2] = inBar ? 0x8a : 0x17
     }
   }
 
@@ -72,3 +73,7 @@ for (const size of [192, 512]) {
   writeFileSync(new URL(`icon-${size}.png`, `file://${outDir}`), makePng(size))
   console.log(`wrote public/icon-${size}.png`)
 }
+
+// Favicon for the browser tab: the same mark at a small size.
+writeFileSync(new URL('favicon.png', `file://${outDir}`), makePng(64))
+console.log('wrote public/favicon.png')

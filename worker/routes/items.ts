@@ -12,8 +12,51 @@ export const items = new Hono<{ Bindings: Bindings }>()
 // averaging their positions (fractional indexing) without rewriting the list.
 const newPosition = () => Date.now() / 1000
 
-const getItem = (db: D1Database, id: string) =>
-  db.prepare('SELECT * FROM items WHERE id = ?').bind(id).first<Item>()
+// Every item is read out with its tags attached in one query. group_concat with
+// a unit-separator (char(31), which never appears in a tag) collapses the
+// item_tags rows into one string we split back into an array.
+const TAG_SEP = '\u001f'
+const SELECT_ITEMS = `
+  SELECT i.*,
+         (SELECT group_concat(tag, char(31)) FROM item_tags WHERE item_id = i.id) AS tags_concat
+  FROM items i`
+
+type ItemRow = Omit<Item, 'tags'> & { tags_concat: string | null }
+
+function rowToItem(row: ItemRow): Item {
+  const { tags_concat, ...rest } = row
+  const tags = tags_concat ? tags_concat.split(TAG_SEP) : []
+  tags.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+  return { ...(rest as Omit<Item, 'tags'>), tags }
+}
+
+async function getItem(db: D1Database, id: string): Promise<Item | null> {
+  const row = await db
+    .prepare(`${SELECT_ITEMS} WHERE i.id = ?`)
+    .bind(id)
+    .first<ItemRow>()
+  return row ? rowToItem(row) : null
+}
+
+// Normalize a freeform tag list: trim, collapse inner whitespace, drop empties,
+// dedupe case-insensitively (keeping the first casing), and cap length/count so
+// a single item can't carry unbounded or oversized tags.
+function normalizeTags(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of input) {
+    if (typeof raw !== 'string') continue
+    const tag = raw.trim().replace(/\s+/g, ' ')
+    if (!tag || tag.length > 50) continue
+    const key = tag.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(tag)
+    if (out.length >= 30) break
+  }
+  return out
+}
 
 // POST /api/items
 // Three shapes: a JSON link, a JSON note, or a multipart PDF upload.
@@ -209,27 +252,76 @@ async function savePdf(c: Ctx) {
 }
 
 // GET /api/items?status=queued  or  GET /api/items?favorite=1
+// Optional &tag=... narrows any of these to items carrying that exact tag.
 // The queue is ordered by position DESC (top = highest position). The read
 // archive is ordered by read_at DESC (most recently read first). Favorites is
 // its own list, independent of the queue and of read/unread: every favorited
 // item, links and notes together, newest first. The order clause is derived
 // from these fixed cases, never from raw input, so it is safe to inline.
 items.get('/items', async (c) => {
+  const tag = c.req.query('tag')?.trim() || null
+  // A tag filter is an EXISTS check against item_tags, added to whichever base
+  // condition applies. Values are always bound, never inlined.
+  const tagClause = tag
+    ? ' AND EXISTS (SELECT 1 FROM item_tags WHERE item_id = i.id AND tag = ?)'
+    : ''
+  const tagBind = tag ? [tag] : []
+
   if (c.req.query('favorite') === '1') {
     const { results } = await c.env.DB.prepare(
-      'SELECT * FROM items WHERE favorite = 1 ORDER BY saved_at DESC'
-    ).all<Item>()
-    return c.json(results)
+      `${SELECT_ITEMS} WHERE i.favorite = 1${tagClause} ORDER BY i.saved_at DESC`
+    )
+      .bind(...tagBind)
+      .all<ItemRow>()
+    return c.json(results.map(rowToItem))
   }
 
   const status = c.req.query('status') ?? 'queued'
-  const orderBy = status === 'read' ? 'read_at DESC' : 'position DESC'
+  const orderBy = status === 'read' ? 'i.read_at DESC' : 'i.position DESC'
   const { results } = await c.env.DB.prepare(
-    `SELECT * FROM items WHERE status = ? ORDER BY ${orderBy}`
+    `${SELECT_ITEMS} WHERE i.status = ?${tagClause} ORDER BY ${orderBy}`
   )
-    .bind(status)
-    .all<Item>()
+    .bind(status, ...tagBind)
+    .all<ItemRow>()
+  return c.json(results.map(rowToItem))
+})
+
+// GET /api/tags
+// Every distinct tag in use with how many items carry it, for the filter UI.
+items.get('/tags', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT tag, COUNT(*) AS count
+     FROM item_tags
+     GROUP BY tag
+     ORDER BY tag COLLATE NOCASE`
+  ).all<{ tag: string; count: number }>()
   return c.json(results)
+})
+
+// PUT /api/items/:id/tags
+// Replace an item's whole tag set. The client sends the full list it wants; we
+// normalize, clear the old rows and insert the new ones in one batch.
+items.put('/items/:id/tags', async (c) => {
+  const id = c.req.param('id')
+  const existing = await getItem(c.env.DB, id)
+  if (!existing) return c.json({ error: 'Item not found' }, 404)
+
+  const body = await c.req.json<{ tags?: unknown }>()
+  const tags = normalizeTags(body.tags)
+
+  const stmts = [
+    c.env.DB.prepare('DELETE FROM item_tags WHERE item_id = ?').bind(id),
+    ...tags.map((tag) =>
+      c.env.DB.prepare('INSERT INTO item_tags (item_id, tag) VALUES (?, ?)').bind(
+        id,
+        tag
+      )
+    ),
+  ]
+  await c.env.DB.batch(stmts)
+
+  const item = await getItem(c.env.DB, id)
+  return c.json(item)
 })
 
 // GET /api/items/:id
@@ -364,7 +456,9 @@ items.post('/items/:id/move', async (c) => {
 })
 
 // DELETE /api/items/:id
-// Removes the item, its file, its highlights, and every FTS row it owns.
+// Removes the item, its file, its highlights, its tags, and every FTS row it
+// owns. Tags are deleted explicitly rather than relying on ON DELETE CASCADE,
+// matching how highlights are handled here.
 items.delete('/items/:id', async (c) => {
   const id = c.req.param('id')
   const item = await getItem(c.env.DB, id)
@@ -377,6 +471,7 @@ items.delete('/items/:id', async (c) => {
   await c.env.DB.batch([
     ...unindexItemStatements(c.env.DB, id),
     c.env.DB.prepare('DELETE FROM highlights WHERE item_id = ?').bind(id),
+    c.env.DB.prepare('DELETE FROM item_tags WHERE item_id = ?').bind(id),
     c.env.DB.prepare('DELETE FROM items WHERE id = ?').bind(id),
   ])
 
