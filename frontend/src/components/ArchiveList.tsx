@@ -1,6 +1,7 @@
 import type { Item } from '../types'
 import { readingTime, formatDate, typeLabel } from '../format'
 import FavoriteButton from './FavoriteButton'
+import TagEditor from './TagEditor'
 
 type Props = {
   items: Item[]
@@ -8,6 +9,7 @@ type Props = {
   onReturn: (id: string) => void
   onDelete: (id: string) => void
   onToggleFavorite: (item: Item) => void
+  onSetTags: (id: string, tags: string[]) => void
 }
 
 // The read archive. Not draggable: order here is "most recently read first",
@@ -19,6 +21,7 @@ export default function ArchiveList({
   onReturn,
   onDelete,
   onToggleFavorite,
+  onSetTags,
 }: Props) {
   return (
     <div className="space-y-2">
@@ -46,6 +49,8 @@ export default function ArchiveList({
               </button>
               <p className="mt-1 text-sm text-neutral-500">{meta}</p>
             </div>
+
+            <TagEditor tags={item.tags} onSave={(tags) => onSetTags(item.id, tags)} />
 
             <div className="flex flex-wrap gap-2">
               <button

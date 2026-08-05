@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import type { Item, HighlightWithItem } from '../types'
+import type { Item, HighlightWithItem, TagCount } from '../types'
 import * as api from '../api'
 import AddItemBar from './AddItemBar'
 import QueueList from './QueueList'
 import ArchiveList from './ArchiveList'
 import FavoritesList from './FavoritesList'
+import TagFilterBar from './TagFilterBar'
 import HighlightsView from './HighlightsView'
 import SearchView from './SearchView'
 
@@ -29,10 +30,21 @@ export default function AppShell() {
   const [items, setItems] = useState<Item[]>([])
   const [favorites, setFavorites] = useState<Item[]>([])
   const [allHighlights, setAllHighlights] = useState<HighlightWithItem[]>([])
+  const [availableTags, setAvailableTags] = useState<TagCount[]>([])
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Load the active view on mount and on tab change, showing the spinner.
+  const refreshTags = () =>
+    api.listTags().then(setAvailableTags).catch(() => {})
+
+  // Keep the tag list (for the filter bar) loaded on mount.
+  useEffect(() => {
+    refreshTags()
+  }, [])
+
+  // Load the active view on mount and on tab change, showing the spinner. The
+  // tag filter only applies to the queue, and reloads it when changed.
   useEffect(() => {
     if (view === 'search') {
       setLoading(false)
@@ -48,7 +60,10 @@ export default function AppShell() {
         : view === 'favorites'
           ? api.listFavorites().then((f) => active && setFavorites(f))
           : api
-              .listItems(view === 'read' ? 'read' : 'queued')
+              .listItems(
+                view === 'read' ? 'read' : 'queued',
+                view === 'queue' ? tagFilter : null
+              )
               .then((d) => active && setItems(d))
     load
       .catch((e) => active && setError(e.message))
@@ -56,7 +71,7 @@ export default function AppShell() {
     return () => {
       active = false
     }
-  }, [view])
+  }, [view, tagFilter])
 
   // When returning to the list from an overlay route (reading, share), refresh
   // the current view silently — no spinner — so a just-saved or just-changed
@@ -72,11 +87,11 @@ export default function AppShell() {
       api.listFavorites().then(setFavorites).catch(() => {})
     } else if (view !== 'search') {
       api
-        .listItems(view === 'read' ? 'read' : 'queued')
+        .listItems(view === 'read' ? 'read' : 'queued', view === 'queue' ? tagFilter : null)
         .then(setItems)
         .catch(() => {})
     }
-  }, [location.pathname, view])
+  }, [location.pathname, view, tagFilter])
 
   function handleAdded(item: Item) {
     setItems((prev) => [item, ...prev])
@@ -139,9 +154,47 @@ export default function AppShell() {
     setItems((prev) => prev.filter((i) => i.id !== id))
     try {
       await api.deleteItem(id)
+      refreshTags()
     } catch (e) {
       setItems(previous)
       setError(e instanceof Error ? e.message : 'Could not delete item')
+    }
+  }
+
+  // Replace an item's tags from any list. Optimistic so the chip appears at once;
+  // the server normalizes and returns the canonical item, which we reconcile. If
+  // a tag filter is active on the queue and the item no longer matches, it drops
+  // out. On failure the previous lists are restored.
+  async function handleSetTags(id: string, tags: string[]) {
+    const prevItems = items
+    const prevFavorites = favorites
+    const sorted = [...tags].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' })
+    )
+    const optimistic = (list: Item[]) =>
+      list.map((i) => (i.id === id ? { ...i, tags: sorted } : i))
+    setItems(optimistic)
+    setFavorites(optimistic)
+
+    try {
+      const updated = await api.setItemTags(id, tags)
+      setItems((prev) =>
+        prev
+          .map((i) => (i.id === id ? updated : i))
+          .filter(
+            (i) =>
+              i.id !== id ||
+              view !== 'queue' ||
+              !tagFilter ||
+              updated.tags.includes(tagFilter)
+          )
+      )
+      setFavorites((prev) => prev.map((i) => (i.id === id ? updated : i)))
+      refreshTags()
+    } catch (e) {
+      setItems(prevItems)
+      setFavorites(prevFavorites)
+      setError(e instanceof Error ? e.message : 'Could not update tags')
     }
   }
 
@@ -179,6 +232,12 @@ export default function AppShell() {
     }
   }
 
+  // Switching tabs clears the tag filter, which only makes sense on the queue.
+  function changeView(next: View) {
+    if (next !== 'queue') setTagFilter(null)
+    setView(next)
+  }
+
   return (
     <div className="mx-auto min-h-screen max-w-2xl overflow-x-hidden px-4 py-8">
       <header className="mb-6">
@@ -189,24 +248,37 @@ export default function AppShell() {
       {/* The tab strip scrolls horizontally on its own when the labels don't fit
           (five tabs on a narrow phone), so it never widens the page. */}
       <nav className="no-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-neutral-200">
-        <TabButton active={view === 'queue'} onClick={() => setView('queue')}>
+        <TabButton active={view === 'queue'} onClick={() => changeView('queue')}>
           Queue
         </TabButton>
-        <TabButton active={view === 'highlights'} onClick={() => setView('highlights')}>
+        <TabButton active={view === 'highlights'} onClick={() => changeView('highlights')}>
           Highlights
         </TabButton>
-        <TabButton active={view === 'search'} onClick={() => setView('search')}>
+        <TabButton active={view === 'search'} onClick={() => changeView('search')}>
           Search
         </TabButton>
-        <TabButton active={view === 'read'} onClick={() => setView('read')}>
+        <TabButton active={view === 'read'} onClick={() => changeView('read')}>
           Read
         </TabButton>
-        <TabButton active={view === 'favorites'} onClick={() => setView('favorites')}>
+        <TabButton active={view === 'favorites'} onClick={() => changeView('favorites')}>
           Favorites
         </TabButton>
       </nav>
 
-      {view === 'queue' && <AddItemBar onAdded={handleAdded} onError={setError} />}
+      {view === 'queue' && (
+        <>
+          <AddItemBar onAdded={handleAdded} onError={setError} />
+          {availableTags.length > 0 && (
+            <div className="mt-4">
+              <TagFilterBar
+                tags={availableTags}
+                active={tagFilter}
+                onSelect={setTagFilter}
+              />
+            </div>
+          )}
+        </>
+      )}
 
       {error && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
@@ -229,9 +301,10 @@ export default function AppShell() {
             items={favorites}
             onOpen={handleOpen}
             onToggleFavorite={handleToggleFavorite}
+            onSetTags={handleSetTags}
           />
         ) : items.length === 0 ? (
-          <EmptyState view={view} />
+          <EmptyState view={view} filtered={view === 'queue' && !!tagFilter} />
         ) : view === 'queue' ? (
           <QueueList
             items={items}
@@ -240,6 +313,7 @@ export default function AppShell() {
             onMarkRead={handleMarkRead}
             onDelete={handleDelete}
             onToggleFavorite={handleToggleFavorite}
+            onSetTags={handleSetTags}
           />
         ) : (
           <ArchiveList
@@ -248,6 +322,7 @@ export default function AppShell() {
             onReturn={handleReturn}
             onDelete={handleDelete}
             onToggleFavorite={handleToggleFavorite}
+            onSetTags={handleSetTags}
           />
         )}
       </div>
@@ -280,12 +355,14 @@ function TabButton({
   )
 }
 
-function EmptyState({ view }: { view: View }) {
+function EmptyState({ view, filtered }: { view: View; filtered?: boolean }) {
   return (
     <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
-      {view === 'queue'
-        ? 'Your queue is empty. Save a link, a PDF, or a note to get started.'
-        : 'Nothing read yet. Items you mark as read land here.'}
+      {filtered
+        ? 'No items with this tag. Pick another tag or “All”.'
+        : view === 'queue'
+          ? 'Your queue is empty. Save a link, a PDF, or a note to get started.'
+          : 'Nothing read yet. Items you mark as read land here.'}
     </p>
   )
 }

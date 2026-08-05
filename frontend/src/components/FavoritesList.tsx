@@ -1,17 +1,24 @@
 import type { Item } from '../types'
 import { readingTime, formatDate, typeLabel } from '../format'
 import FavoriteButton from './FavoriteButton'
+import TagEditor from './TagEditor'
 
 type Props = {
   items: Item[]
   onOpen: (item: Item) => void
   onToggleFavorite: (item: Item) => void
+  onSetTags: (id: string, tags: string[]) => void
 }
 
 // Every favorited item, links and notes together, read or unread. Independent
 // of the queue and of read/unread status, newest first. Unfavoriting here
 // removes the card from the list.
-export default function FavoritesList({ items, onOpen, onToggleFavorite }: Props) {
+export default function FavoritesList({
+  items,
+  onOpen,
+  onToggleFavorite,
+  onSetTags,
+}: Props) {
   if (items.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
@@ -47,6 +54,8 @@ export default function FavoritesList({ items, onOpen, onToggleFavorite }: Props
               </button>
               <p className="mt-1 text-sm text-neutral-500">{meta}</p>
             </div>
+
+            <TagEditor tags={item.tags} onSave={(tags) => onSetTags(item.id, tags)} />
 
             <div className="flex flex-wrap gap-2">
               <button
