@@ -6,6 +6,22 @@ body {
   @apply bg-neutral-50 text-neutral-900 antialiased;
 }
 
+/* The whole app never scrolls sideways; wide children scroll inside their own
+   containers instead (the tab strip, code blocks in the reader). */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* A horizontally scrollable strip with no visible scrollbar (the nav tabs). */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Typography for the reading view (extracted article HTML or note text).
    A single comfortable column, capped near 68 characters and centered, with
    generous line-height and spacing — a proper reader, like Kindle/Safari
