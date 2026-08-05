@@ -23,6 +23,8 @@ const json = (body: unknown): RequestInit => ({
 export const listItems = (status: 'queued' | 'read' = 'queued') =>
   request<Item[]>(`/api/items?status=${status}`)
 
+export const listFavorites = () => request<Item[]>('/api/items?favorite=1')
+
 export const saveLink = (url: string) =>
   request<Item>('/api/items', json({ type: 'link', url }))
 
@@ -49,6 +51,21 @@ export const returnToQueue = (id: string) =>
     body: JSON.stringify({ status: 'queued' }),
   })
 
+export const setFavorite = (id: string, favorite: boolean) =>
+  request<Item>(`/api/items/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ favorite }),
+  })
+
+// Edit an existing note's title and text. Notes only.
+export const updateNote = (id: string, title: string, text: string) =>
+  request<Item>(`/api/items/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ title, text }),
+  })
+
 export const deleteItem = (id: string) =>
   request<{ ok: true }>(`/api/items/${id}`, { method: 'DELETE' })
 
@@ -68,7 +85,7 @@ export const listItemHighlights = (itemId: string) =>
 
 export const createHighlight = (
   itemId: string,
-  data: { text: string; prefix: string; suffix: string; color: string; note: string }
+  data: { text: string; prefix: string; suffix: string; note: string }
 ) => request<Highlight>(`/api/items/${itemId}/highlights`, json(data))
 
 export const deleteHighlight = (id: string) =>

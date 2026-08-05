@@ -1,5 +1,5 @@
 import type { HighlightWithItem } from '../types'
-import { HIGHLIGHT_COLORS } from '../highlight'
+import { HIGHLIGHT_COLOR } from '../highlight'
 import { typeLabel } from '../format'
 
 type Props = {
@@ -27,7 +27,7 @@ export default function HighlightsView({ highlights, onOpenSource }: Props) {
         >
           <blockquote
             className="border-l-4 pl-3 text-neutral-800"
-            style={{ borderColor: HIGHLIGHT_COLORS[hl.color] ?? HIGHLIGHT_COLORS.yellow }}
+            style={{ borderColor: HIGHLIGHT_COLOR }}
           >
             {hl.text}
           </blockquote>

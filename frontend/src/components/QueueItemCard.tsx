@@ -2,16 +2,24 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Item } from '../types'
 import { readingTime, formatDate, typeLabel } from '../format'
+import FavoriteButton from './FavoriteButton'
 
 type Props = {
   item: Item
   onOpen: (item: Item) => void
   onMarkRead: (id: string) => void
   onDelete: (id: string) => void
+  onToggleFavorite: (item: Item) => void
 }
 
 // One card in the queue. The whole card is the drag handle.
-export default function QueueItemCard({ item, onOpen, onMarkRead, onDelete }: Props) {
+export default function QueueItemCard({
+  item,
+  onOpen,
+  onMarkRead,
+  onDelete,
+  onToggleFavorite,
+}: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
 
@@ -77,6 +85,7 @@ export default function QueueItemCard({ item, onOpen, onMarkRead, onDelete }: Pr
         >
           Delete
         </button>
+        <FavoriteButton item={item} onToggle={onToggleFavorite} />
       </div>
     </div>
   )

@@ -21,6 +21,7 @@ export type Item = {
   file_size: number | null
   folder_id: string | null
   status: 'queued' | 'read'
+  favorite: number
   position: number
   progress: number
   extraction: 'pending' | 'ok' | 'failed' | 'skipped'

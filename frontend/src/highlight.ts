@@ -8,12 +8,9 @@ import type { Highlight } from './types'
 // text immediately before and after it, and re-find it by searching that same
 // concatenation on reopen. Prefix/suffix disambiguate repeated quotes.
 
-export const HIGHLIGHT_COLORS: Record<string, string> = {
-  yellow: '#fde68a',
-  green: '#bbf7d0',
-  blue: '#bfdbfe',
-  pink: '#fbcfe8',
-}
+// Highlights are a single color. Older rows may carry other stored colors, but
+// everything is painted yellow now.
+export const HIGHLIGHT_COLOR = '#fde68a'
 
 const CONTEXT = 32
 
@@ -129,7 +126,7 @@ function wrap(container: HTMLElement, start: number, end: number, hl: Highlight)
     const mark = document.createElement('mark')
     mark.className = 'hl'
     mark.dataset.hlId = hl.id
-    mark.style.backgroundColor = HIGHLIGHT_COLORS[hl.color] ?? HIGHLIGHT_COLORS.yellow
+    mark.style.backgroundColor = HIGHLIGHT_COLOR
     // surroundContents is safe here: each target is within a single text node.
     range.surroundContents(mark)
   }

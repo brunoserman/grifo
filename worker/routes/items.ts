@@ -50,7 +50,13 @@ async function saveLink(c: Ctx, url?: string) {
 
   const id = crypto.randomUUID()
   const title = extracted?.title || url
-  const extraction = extracted ? 'ok' : 'failed'
+  // 'ok' only when a real article body came back. A page with just a title
+  // (LinkedIn, YouTube, a SPA) is still saved, but as 'failed', so it keeps
+  // opening the original URL while being identifiable in the queue.
+  const extraction = extracted?.content_html ? 'ok' : 'failed'
+  if (extraction === 'failed' && !extractionError) {
+    extractionError = 'The article body could not be extracted from this page.'
+  }
 
   const insert = c.env.DB.prepare(
     `INSERT INTO items
@@ -122,6 +128,44 @@ async function saveNote(
   return c.json(item, 201)
 }
 
+// Edit an existing note's title and/or text. Only notes are editable; links and
+// PDFs keep their extracted or uploaded content. Re-derives content_html,
+// content_text and word_count, and reindexes so search stays in sync.
+async function editNote(c: Ctx, id: string, title?: string, text?: string) {
+  const existing = await getItem(c.env.DB, id)
+  if (!existing) return c.json({ error: 'Item not found' }, 404)
+  if (existing.type !== 'note') {
+    return c.json({ error: 'Only notes can be edited' }, 400)
+  }
+
+  const nextTitle = (title ?? existing.title).trim()
+  const nextText = (text ?? existing.content_text ?? '').trim()
+  if (!nextTitle || !nextText) {
+    return c.json({ error: 'A note needs a title and text' }, 400)
+  }
+
+  const contentHtml = noteToHtml(nextText)
+  const wordCount = nextText.split(/\s+/).length
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      `UPDATE items
+         SET title = ?, content_html = ?, content_text = ?, word_count = ?
+       WHERE id = ?`
+    ).bind(nextTitle, contentHtml, nextText, wordCount, id),
+    ...indexItemStatements(c.env.DB, {
+      id,
+      title: nextTitle,
+      author: null,
+      site_name: null,
+      content_text: nextText,
+    }),
+  ])
+
+  const item = await getItem(c.env.DB, id)
+  return c.json(item)
+}
+
 async function savePdf(c: Ctx) {
   const form = await c.req.formData()
   // This workers-types version types get() as string; the runtime returns a
@@ -164,11 +208,20 @@ async function savePdf(c: Ctx) {
   return c.json(item, 201)
 }
 
-// GET /api/items?status=queued
+// GET /api/items?status=queued  or  GET /api/items?favorite=1
 // The queue is ordered by position DESC (top = highest position). The read
-// archive is ordered by read_at DESC (most recently read first). The order
-// clause is derived from status, never from raw input, so it is safe to inline.
+// archive is ordered by read_at DESC (most recently read first). Favorites is
+// its own list, independent of the queue and of read/unread: every favorited
+// item, links and notes together, newest first. The order clause is derived
+// from these fixed cases, never from raw input, so it is safe to inline.
 items.get('/items', async (c) => {
+  if (c.req.query('favorite') === '1') {
+    const { results } = await c.env.DB.prepare(
+      'SELECT * FROM items WHERE favorite = 1 ORDER BY saved_at DESC'
+    ).all<Item>()
+    return c.json(results)
+  }
+
   const status = c.req.query('status') ?? 'queued'
   const orderBy = status === 'read' ? 'read_at DESC' : 'position DESC'
   const { results } = await c.env.DB.prepare(
@@ -215,15 +268,32 @@ items.get('/items/:id/file', async (c) => {
 })
 
 // PATCH /api/items/:id
-// Mark as read / requeue, and/or set an explicit position. Neither of these
-// changes indexed content, so the FTS tables are untouched here.
+// Mark as read / requeue, set an explicit position, toggle favorite, or edit a
+// note's title and text. Editing a note re-derives its content and reindexes;
+// the other changes never touch indexed content, so they leave the FTS tables
+// alone.
 items.patch('/items/:id', async (c) => {
   const id = c.req.param('id')
-  const body = await c.req.json<{ status?: 'queued' | 'read'; position?: number }>()
+  const body = await c.req.json<{
+    status?: 'queued' | 'read'
+    position?: number
+    favorite?: boolean
+    title?: string
+    text?: string
+  }>()
+
+  // Editing a note is its own path: it rewrites content and must reindex.
+  if (body.title !== undefined || body.text !== undefined) {
+    return editNote(c, id, body.title, body.text)
+  }
 
   const sets: string[] = []
   const binds: (string | number)[] = []
 
+  if (typeof body.favorite === 'boolean') {
+    sets.push('favorite = ?')
+    binds.push(body.favorite ? 1 : 0)
+  }
   if (body.status === 'read') {
     sets.push("status = 'read'", 'read_at = unixepoch()')
   } else if (body.status === 'queued') {
