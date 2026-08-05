@@ -240,9 +240,18 @@ export default function AppShell() {
 
   return (
     <div className="mx-auto min-h-screen max-w-2xl overflow-x-hidden px-4 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Grifo</h1>
-        <p className="text-sm text-neutral-500">Your reading queue.</p>
+      <header className="mb-6 flex items-center gap-3">
+        <img
+          src="/icon-192.png"
+          alt="Grifo"
+          width={40}
+          height={40}
+          className="h-10 w-10 shrink-0 rounded-md"
+        />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Grifo</h1>
+          <p className="text-sm text-neutral-500">Read it, keep what matters.</p>
+        </div>
       </header>
 
       {/* The tab strip scrolls horizontally on its own when the labels don't fit
