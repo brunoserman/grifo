@@ -192,17 +192,17 @@ export default function AppShell() {
         <TabButton active={view === 'queue'} onClick={() => setView('queue')}>
           Queue
         </TabButton>
-        <TabButton active={view === 'read'} onClick={() => setView('read')}>
-          Read
-        </TabButton>
-        <TabButton active={view === 'favorites'} onClick={() => setView('favorites')}>
-          Favorites
-        </TabButton>
         <TabButton active={view === 'highlights'} onClick={() => setView('highlights')}>
           Highlights
         </TabButton>
         <TabButton active={view === 'search'} onClick={() => setView('search')}>
           Search
+        </TabButton>
+        <TabButton active={view === 'read'} onClick={() => setView('read')}>
+          Read
+        </TabButton>
+        <TabButton active={view === 'favorites'} onClick={() => setView('favorites')}>
+          Favorites
         </TabButton>
       </nav>
 
