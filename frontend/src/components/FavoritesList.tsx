@@ -5,28 +5,29 @@ import FavoriteButton from './FavoriteButton'
 type Props = {
   items: Item[]
   onOpen: (item: Item) => void
-  onReturn: (id: string) => void
-  onDelete: (id: string) => void
   onToggleFavorite: (item: Item) => void
 }
 
-// The read archive. Not draggable: order here is "most recently read first",
-// not a manual priority. Items and their highlights are never deleted by
-// reading; they only move here, and can move back to the queue.
-export default function ArchiveList({
-  items,
-  onOpen,
-  onReturn,
-  onDelete,
-  onToggleFavorite,
-}: Props) {
+// Every favorited item, links and notes together, read or unread. Independent
+// of the queue and of read/unread status, newest first. Unfavoriting here
+// removes the card from the list.
+export default function FavoritesList({ items, onOpen, onToggleFavorite }: Props) {
+  if (items.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
+        No favorites yet. Star any item to keep it here.
+      </p>
+    )
+  }
+
   return (
     <div className="space-y-2">
       {items.map((item) => {
         const meta = [
           item.site_name || typeLabel[item.type],
           readingTime(item),
-          item.read_at ? `read ${formatDate(item.read_at)}` : null,
+          item.status === 'read' ? 'read' : 'in queue',
+          formatDate(item.saved_at),
         ]
           .filter(Boolean)
           .join(' · ')
@@ -54,20 +55,6 @@ export default function ArchiveList({
                 className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
               >
                 Open
-              </button>
-              <button
-                type="button"
-                onClick={() => onReturn(item.id)}
-                className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
-              >
-                Return to queue
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete(item.id)}
-                className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50"
-              >
-                Delete
               </button>
               <FavoriteButton item={item} onToggle={onToggleFavorite} />
             </div>

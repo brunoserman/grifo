@@ -5,7 +5,7 @@ import * as api from '../api'
 import {
   captureSelection,
   paintHighlights,
-  HIGHLIGHT_COLORS,
+  HIGHLIGHT_COLOR,
   type CapturedSelection,
 } from '../highlight'
 
@@ -19,11 +19,14 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-const COLOR_KEYS = Object.keys(HIGHLIGHT_COLORS)
-
 // The reading view. Full screen on mobile (its own route, with a back arrow),
 // a centered modal on desktop.
-export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
+export default function Reader({ item: itemProp, onClose, scrollToHighlightId }: Props) {
+  // A local copy so editing a note updates the view immediately. Resets when a
+  // different item is opened (the prop identity changes).
+  const [item, setItem] = useState<Item>(itemProp)
+  useEffect(() => setItem(itemProp), [itemProp])
+
   const contentRef = useRef<HTMLDivElement>(null)
   const [highlights, setHighlights] = useState<Highlight[]>([])
   const [pending, setPending] = useState<CapturedSelection | null>(null)
@@ -33,6 +36,12 @@ export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
   )
   const [saving, setSaving] = useState(false)
 
+  // Note editing (notes only).
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editText, setEditText] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
+
   const bodyHtml =
     item.content_html ??
     `<p>${escapeHtml(item.content_text ?? 'This item has no readable content.')}</p>`
@@ -41,12 +50,13 @@ export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      if (editing) return // don't close the reader while editing a note
       if (pending) setPending(null)
       else onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose, pending])
+  }, [onClose, pending, editing])
 
   // Load this item's highlights.
   useEffect(() => {
@@ -87,8 +97,11 @@ export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
 
   // Repaint only when the content or the saved highlights change — never on the
   // pending selection. Repainting rebuilds the DOM, which would corrupt a
-  // selection the user is still dragging.
+  // selection the user is still dragging. `editing` is a dependency so the
+  // content is repainted after the note editor is dismissed and the article
+  // element is mounted again.
   useEffect(() => {
+    if (editing) return
     const container = contentRef.current
     if (!container) return
     paintHighlights(container, bodyHtml, highlights)
@@ -103,9 +116,9 @@ export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
         setTimeout(() => mark.classList.remove('hl-flash'), 1500)
       }
     }
-  }, [bodyHtml, highlights, scrollToHighlightId])
+  }, [bodyHtml, highlights, scrollToHighlightId, editing])
 
-  async function saveHighlight(color: string) {
+  async function saveHighlight() {
     if (!pending || saving) return
     setSaving(true)
     try {
@@ -113,7 +126,6 @@ export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
         text: pending.text,
         prefix: pending.prefix,
         suffix: pending.suffix,
-        color,
         note: noteDraft,
       })
       setHighlights((prev) => [...prev, hl])
@@ -122,6 +134,26 @@ export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
       window.getSelection()?.removeAllRanges()
     } finally {
       setSaving(false)
+    }
+  }
+
+  function startEditing() {
+    setEditTitle(item.title)
+    setEditText(item.content_text ?? '')
+    setPending(null)
+    setPopover(null)
+    setEditing(true)
+  }
+
+  async function saveNote() {
+    if (!editTitle.trim() || !editText.trim() || savingNote) return
+    setSavingNote(true)
+    try {
+      const updated = await api.updateNote(item.id, editTitle.trim(), editText.trim())
+      setItem(updated)
+      setEditing(false)
+    } finally {
+      setSavingNote(false)
     }
   }
 
@@ -190,7 +222,18 @@ export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
             <path d="M12 19l-7-7 7-7" />
           </svg>
         </button>
-        <span className="truncate font-medium text-neutral-900">{item.title}</span>
+        <span className="min-w-0 flex-1 truncate font-medium text-neutral-900">
+          {item.title}
+        </span>
+        {item.type === 'note' && !editing && (
+          <button
+            type="button"
+            onClick={startEditing}
+            className="shrink-0 rounded-md border border-neutral-200 px-2.5 py-1 text-sm text-neutral-600 hover:bg-neutral-100"
+          >
+            Edit
+          </button>
+        )}
       </div>
 
       <article
@@ -202,13 +245,24 @@ export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
             {item.title}
           </h1>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-md border border-neutral-200 px-3 py-1 text-sm text-neutral-600 hover:bg-neutral-100"
-          >
-            Close
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {item.type === 'note' && !editing && (
+              <button
+                type="button"
+                onClick={startEditing}
+                className="rounded-md border border-neutral-200 px-3 py-1 text-sm text-neutral-600 hover:bg-neutral-100"
+              >
+                Edit
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md border border-neutral-200 px-3 py-1 text-sm text-neutral-600 hover:bg-neutral-100"
+            >
+              Close
+            </button>
+          </div>
         </div>
 
         {/* On mobile the title is in the top bar; show it here too, larger. */}
@@ -229,13 +283,50 @@ export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
           </a>
         )}
 
-        <p className="mt-4 text-xs text-neutral-400">Select text to highlight it.</p>
+        {editing ? (
+          <div className="mt-6 border-t border-neutral-100 pt-6">
+            <input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Note title"
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-lg font-medium outline-none focus:border-neutral-500"
+            />
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              placeholder="Write your note…"
+              rows={14}
+              className="mt-3 w-full rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-neutral-500"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="rounded-md px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveNote}
+                disabled={savingNote || !editTitle.trim() || !editText.trim()}
+                className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-40"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="mt-4 text-xs text-neutral-400">Select text to highlight it.</p>
 
-        <div
-          ref={contentRef}
-          className="reader-content mt-2 border-t border-neutral-100 pt-6"
-          onClick={onContentClick}
-        />
+            <div
+              ref={contentRef}
+              className="reader-content mt-2 border-t border-neutral-100 pt-6"
+              onClick={onContentClick}
+            />
+          </>
+        )}
       </article>
 
       {/* Toolbar shown while a selection is pending. The quote is shown here as
@@ -269,19 +360,15 @@ export default function Reader({ item, onClose, scrollToHighlightId }: Props) {
               ✕
             </button>
           </div>
-          <div className="mt-2 flex items-center gap-2">
-            {COLOR_KEYS.map((color) => (
-              <button
-                key={color}
-                type="button"
-                title={`Save (${color})`}
-                disabled={saving}
-                onClick={() => saveHighlight(color)}
-                className="h-6 w-6 rounded-full border border-black/10 hover:scale-110"
-                style={{ backgroundColor: HIGHLIGHT_COLORS[color] }}
-              />
-            ))}
-          </div>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={saveHighlight}
+            className="mt-2 w-full rounded-md border border-black/10 px-3 py-1.5 text-sm font-medium text-neutral-800 hover:brightness-95 disabled:opacity-50"
+            style={{ backgroundColor: HIGHLIGHT_COLOR }}
+          >
+            Highlight
+          </button>
         </div>
       )}
 

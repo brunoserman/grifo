@@ -21,6 +21,7 @@ type Props = {
   onOpen: (item: Item) => void
   onMarkRead: (id: string) => void
   onDelete: (id: string) => void
+  onToggleFavorite: (item: Item) => void
 }
 
 // The draggable queue. On drop it reorders locally and hands the new order back
@@ -31,6 +32,7 @@ export default function QueueList({
   onOpen,
   onMarkRead,
   onDelete,
+  onToggleFavorite,
 }: Props) {
   // Mouse: start dragging after a small movement, so a click still opens.
   // Touch: press and hold ~200ms to drag, so a tap opens and a scroll still
@@ -73,6 +75,7 @@ export default function QueueList({
               onOpen={onOpen}
               onMarkRead={onMarkRead}
               onDelete={onDelete}
+              onToggleFavorite={onToggleFavorite}
             />
           ))}
         </div>

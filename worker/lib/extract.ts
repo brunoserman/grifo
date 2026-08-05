@@ -34,25 +34,38 @@ export async function extractFromUrl(url: string): Promise<Extracted> {
   // differ slightly from a browser Document, so we cast where needed.
   const { document } = parseHTML(html)
 
+  const siteFromMeta =
+    document
+      .querySelector('meta[property="og:site_name"]')
+      ?.getAttribute('content') || hostnameOf(url)
+
   // linkedom's document is structurally compatible with what Readability reads,
   // but not with the DOM Document type, which isn't available in the Worker.
   const article = new Readability(document as any).parse()
+
+  // Pages like LinkedIn posts or YouTube videos have no extractable article
+  // body. Rather than losing everything, still return the page title (and site)
+  // so the item is identifiable in the queue. content_html stays null, which is
+  // what the caller reads to mark extraction as 'failed' and open the original.
   if (!article) {
-    throw new Error('Readability could not extract an article from the page')
+    return {
+      title: titleFromMeta(document) || null,
+      author: null,
+      site_name: siteFromMeta || null,
+      excerpt: null,
+      content_html: null,
+      content_text: null,
+      word_count: null,
+    }
   }
 
   const contentText = (article.textContent ?? '').replace(/\s+/g, ' ').trim()
   const wordCount = contentText ? contentText.split(' ').length : 0
 
-  const siteName =
-    article.siteName ||
-    document
-      .querySelector('meta[property="og:site_name"]')
-      ?.getAttribute('content') ||
-    hostnameOf(url)
+  const siteName = article.siteName || siteFromMeta
 
   return {
-    title: article.title || null,
+    title: article.title || titleFromMeta(document) || null,
     author: article.byline || null,
     site_name: siteName || null,
     excerpt: article.excerpt || null,
@@ -60,6 +73,19 @@ export async function extractFromUrl(url: string): Promise<Extracted> {
     content_text: contentText || null,
     word_count: wordCount || null,
   }
+}
+
+// The page's own title, from <title> or the OpenGraph/Twitter tags most sites
+// set even when the body is a single-page app Readability can't read.
+function titleFromMeta(document: {
+  querySelector: (s: string) => { getAttribute: (a: string) => string | null; textContent?: string | null } | null
+}): string | null {
+  const meta =
+    document.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
+    document.querySelector('meta[name="twitter:title"]')?.getAttribute('content')
+  if (meta?.trim()) return meta.trim()
+  const title = document.querySelector('title')?.textContent
+  return title?.trim() || null
 }
 
 function hostnameOf(url: string): string | null {

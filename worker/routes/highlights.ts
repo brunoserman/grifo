@@ -38,14 +38,15 @@ highlights.post('/items/:id/highlights', async (c) => {
     text?: string
     prefix?: string
     suffix?: string
-    color?: string
     note?: string
   }>()
   const text = body.text?.trim()
   if (!text) return c.json({ error: 'Highlight text is required' }, 400)
 
   const id = crypto.randomUUID()
-  const color = body.color?.trim() || 'yellow'
+  // Highlights are a single color (yellow). The column stays for the stored
+  // schema and older rows, but every new highlight is yellow.
+  const color = 'yellow'
   const note = body.note?.trim() || null
 
   await c.env.DB.batch([

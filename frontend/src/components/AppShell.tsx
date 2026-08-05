@@ -5,10 +5,11 @@ import * as api from '../api'
 import AddItemBar from './AddItemBar'
 import QueueList from './QueueList'
 import ArchiveList from './ArchiveList'
+import FavoritesList from './FavoritesList'
 import HighlightsView from './HighlightsView'
 import SearchView from './SearchView'
 
-type View = 'queue' | 'read' | 'highlights' | 'search'
+type View = 'queue' | 'read' | 'favorites' | 'highlights' | 'search'
 
 // Open an item for reading by navigating to its route (so it has its own URL
 // and the browser back button returns here). PDFs and links that could not be
@@ -26,6 +27,7 @@ export default function AppShell() {
   const location = useLocation()
   const [view, setView] = useState<View>('queue')
   const [items, setItems] = useState<Item[]>([])
+  const [favorites, setFavorites] = useState<Item[]>([])
   const [allHighlights, setAllHighlights] = useState<HighlightWithItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -43,9 +45,11 @@ export default function AppShell() {
     const load =
       view === 'highlights'
         ? api.listAllHighlights().then((h) => active && setAllHighlights(h))
-        : api
-            .listItems(view === 'read' ? 'read' : 'queued')
-            .then((d) => active && setItems(d))
+        : view === 'favorites'
+          ? api.listFavorites().then((f) => active && setFavorites(f))
+          : api
+              .listItems(view === 'read' ? 'read' : 'queued')
+              .then((d) => active && setItems(d))
     load
       .catch((e) => active && setError(e.message))
       .finally(() => active && setLoading(false))
@@ -64,6 +68,8 @@ export default function AppShell() {
     if (!cameBack) return
     if (view === 'highlights') {
       api.listAllHighlights().then(setAllHighlights).catch(() => {})
+    } else if (view === 'favorites') {
+      api.listFavorites().then(setFavorites).catch(() => {})
     } else if (view !== 'search') {
       api
         .listItems(view === 'read' ? 'read' : 'queued')
@@ -139,6 +145,26 @@ export default function AppShell() {
     }
   }
 
+  // Toggle favorite from any list. Optimistic: flip the flag on the item in the
+  // queue/archive lists, and drop it from the Favorites list when unfavorited.
+  async function handleToggleFavorite(item: Item) {
+    const next = item.favorite ? 0 : 1
+    const patch = (list: Item[]) =>
+      list.map((i) => (i.id === item.id ? { ...i, favorite: next } : i))
+    setItems(patch)
+    setFavorites((prev) =>
+      next ? patch(prev) : prev.filter((i) => i.id !== item.id)
+    )
+    try {
+      await api.setFavorite(item.id, next === 1)
+    } catch (e) {
+      // Revert on failure by reloading whichever list is showing.
+      setError(e instanceof Error ? e.message : 'Could not update favorite')
+      if (view === 'favorites') api.listFavorites().then(setFavorites).catch(() => {})
+      else api.listItems(view === 'read' ? 'read' : 'queued').then(setItems).catch(() => {})
+    }
+  }
+
   async function handleReorder(reordered: Item[], movedId: string, newIndex: number) {
     const previous = items
     setItems(reordered)
@@ -167,6 +193,9 @@ export default function AppShell() {
         <TabButton active={view === 'read'} onClick={() => setView('read')}>
           Read
         </TabButton>
+        <TabButton active={view === 'favorites'} onClick={() => setView('favorites')}>
+          Favorites
+        </TabButton>
         <TabButton active={view === 'highlights'} onClick={() => setView('highlights')}>
           Highlights
         </TabButton>
@@ -193,6 +222,12 @@ export default function AppShell() {
             highlights={allHighlights}
             onOpenSource={(hl) => openSource(hl.item_id, hl.id)}
           />
+        ) : view === 'favorites' ? (
+          <FavoritesList
+            items={favorites}
+            onOpen={handleOpen}
+            onToggleFavorite={handleToggleFavorite}
+          />
         ) : items.length === 0 ? (
           <EmptyState view={view} />
         ) : view === 'queue' ? (
@@ -202,6 +237,7 @@ export default function AppShell() {
             onOpen={handleOpen}
             onMarkRead={handleMarkRead}
             onDelete={handleDelete}
+            onToggleFavorite={handleToggleFavorite}
           />
         ) : (
           <ArchiveList
@@ -209,6 +245,7 @@ export default function AppShell() {
             onOpen={handleOpen}
             onReturn={handleReturn}
             onDelete={handleDelete}
+            onToggleFavorite={handleToggleFavorite}
           />
         )}
       </div>
