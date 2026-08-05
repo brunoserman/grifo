@@ -180,13 +180,15 @@ export default function AppShell() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-2xl px-4 py-8">
+    <div className="mx-auto min-h-screen max-w-2xl overflow-x-hidden px-4 py-8">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Grifo</h1>
         <p className="text-sm text-neutral-500">Your reading queue.</p>
       </header>
 
-      <nav className="mb-6 flex gap-1 border-b border-neutral-200">
+      {/* The tab strip scrolls horizontally on its own when the labels don't fit
+          (five tabs on a narrow phone), so it never widens the page. */}
+      <nav className="no-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-neutral-200">
         <TabButton active={view === 'queue'} onClick={() => setView('queue')}>
           Queue
         </TabButton>
@@ -267,7 +269,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={
-        'border-b-2 px-4 py-2 text-sm font-medium ' +
+        'shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium sm:px-4 ' +
         (active
           ? 'border-neutral-900 text-neutral-900'
           : 'border-transparent text-neutral-500 hover:text-neutral-800')

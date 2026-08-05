@@ -42,6 +42,19 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
   const [editText, setEditText] = useState('')
   const [savingNote, setSavingNote] = useState(false)
 
+  // On mobile the selection toolbar and popover are pinned to the bottom of the
+  // screen instead of floating over the passage, so they never cover the text
+  // being selected. Matches the sm: breakpoint used elsewhere.
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const onChange = () => setIsMobile(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
   const bodyHtml =
     item.content_html ??
     `<p>${escapeHtml(item.content_text ?? 'This item has no readable content.')}</p>`
@@ -334,11 +347,21 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
           still selecting or typing a note. */}
       {pending && (
         <div
-          className="fixed z-[60] w-64 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg"
-          style={{
-            top: Math.min(Math.max(8, pending.rect.bottom + 8), window.innerHeight - 130),
-            left: Math.max(8, Math.min(pending.rect.left, window.innerWidth - 264)),
-          }}
+          className={
+            'fixed z-[60] rounded-lg border border-neutral-200 bg-white p-2 shadow-lg ' +
+            (isMobile ? 'inset-x-2 bottom-2' : 'w-64')
+          }
+          style={
+            isMobile
+              ? undefined
+              : {
+                  top: Math.min(
+                    Math.max(8, pending.rect.bottom + 8),
+                    window.innerHeight - 130
+                  ),
+                  left: Math.max(8, Math.min(pending.rect.left, window.innerWidth - 264)),
+                }
+          }
           onClick={(e) => e.stopPropagation()}
         >
           <p className="mb-2 line-clamp-2 border-l-2 border-neutral-300 pl-2 text-xs italic text-neutral-500">
@@ -375,11 +398,18 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
       {/* Popover shown when an existing highlight is clicked. */}
       {popover && (
         <div
-          className="fixed z-[60] max-w-xs rounded-lg border border-neutral-200 bg-white p-3 shadow-lg"
-          style={{
-            top: Math.min(popover.y + 8, window.innerHeight - 120),
-            left: Math.max(8, Math.min(popover.x, window.innerWidth - 240)),
-          }}
+          className={
+            'fixed z-[60] rounded-lg border border-neutral-200 bg-white p-3 shadow-lg ' +
+            (isMobile ? 'inset-x-2 bottom-2' : 'max-w-xs')
+          }
+          style={
+            isMobile
+              ? undefined
+              : {
+                  top: Math.min(popover.y + 8, window.innerHeight - 120),
+                  left: Math.max(8, Math.min(popover.x, window.innerWidth - 240)),
+                }
+          }
           onClick={(e) => e.stopPropagation()}
         >
           {popover.hl.note ? (
