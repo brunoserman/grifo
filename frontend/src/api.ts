@@ -107,10 +107,16 @@ export const createHighlight = (
 export const deleteHighlight = (id: string) =>
   request<{ ok: true }>(`/api/highlights/${id}`, { method: 'DELETE' })
 
-export const listAllHighlights = () =>
-  request<HighlightWithItem[]>('/api/highlights')
+export const listAllHighlights = (tag?: string | null) => {
+  const params = new URLSearchParams()
+  if (tag) params.set('tag', tag)
+  const qs = params.toString()
+  return request<HighlightWithItem[]>(`/api/highlights${qs ? `?${qs}` : ''}`)
+}
 
-export const search = (q: string) =>
+export type SearchScope = 'all' | 'queue' | 'read' | 'highlights'
+
+export const search = (q: string, scope: SearchScope = 'all') =>
   request<{ results: SearchResult[] }>(
-    `/api/search?q=${encodeURIComponent(q)}`
+    `/api/search?q=${encodeURIComponent(q)}&scope=${scope}`
   )

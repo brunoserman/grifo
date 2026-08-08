@@ -2,13 +2,16 @@ import type { Item } from '../types'
 import { readingTime, formatDate, itemSourceLabel } from '../format'
 import FavoriteButton from './FavoriteButton'
 import TagEditor from './TagEditor'
+import TagChips from './TagChips'
 import ItemHeading from './ItemHeading'
+import OverflowMenu from './OverflowMenu'
 
 type Props = {
   items: Item[]
   onOpen: (item: Item) => void
   onToggleFavorite: (item: Item) => void
   onSetTags: (id: string, tags: string[]) => void
+  allTags: string[]
 }
 
 // Every favorited item, links and notes together, read or unread. Independent
@@ -19,6 +22,7 @@ export default function FavoritesList({
   onOpen,
   onToggleFavorite,
   onSetTags,
+  allTags,
 }: Props) {
   if (items.length === 0) {
     return (
@@ -47,9 +51,9 @@ export default function FavoritesList({
           >
             <ItemHeading item={item} onOpen={onOpen} meta={meta} />
 
-            <TagEditor tags={item.tags} onSave={(tags) => onSetTags(item.id, tags)} />
+            <TagChips tags={item.tags} />
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => onOpen(item)}
@@ -58,6 +62,20 @@ export default function FavoritesList({
                 Open
               </button>
               <FavoriteButton item={item} onToggle={onToggleFavorite} />
+              <OverflowMenu className="ml-auto">
+                {() => (
+                  <div className="px-2.5 py-1.5">
+                    <p className="mb-1 text-[11px] uppercase tracking-wide text-neutral-400">
+                      Tags
+                    </p>
+                    <TagEditor
+                      tags={item.tags}
+                      suggestions={allTags}
+                      onSave={(tags) => onSetTags(item.id, tags)}
+                    />
+                  </div>
+                )}
+              </OverflowMenu>
             </div>
           </div>
         )

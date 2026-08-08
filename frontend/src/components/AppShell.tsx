@@ -37,10 +37,13 @@ export default function AppShell() {
   const [allHighlights, setAllHighlights] = useState<HighlightWithItem[]>([])
   const [availableTags, setAvailableTags] = useState<TagCount[]>([])
   const [tagFilter, setTagFilter] = useState<string | null>(null)
+  const [highlightsTag, setHighlightsTag] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // The tagline is shown once, on first load, then reclaimed for content.
   const [showTagline, setShowTagline] = useState(true)
+
+  const allTagNames = availableTags.map((t) => t.tag)
 
   const refreshTags = () =>
     api.listTags().then(setAvailableTags).catch(() => {})
@@ -63,7 +66,7 @@ export default function AppShell() {
     setError(null)
     const load =
       view === 'highlights'
-        ? api.listAllHighlights().then((h) => active && setAllHighlights(h))
+        ? api.listAllHighlights(highlightsTag).then((h) => active && setAllHighlights(h))
         : view === 'favorites'
           ? api.listFavorites().then((f) => active && setFavorites(f))
           : api
@@ -75,7 +78,7 @@ export default function AppShell() {
     return () => {
       active = false
     }
-  }, [view, queueStatus, tagFilter])
+  }, [view, queueStatus, tagFilter, highlightsTag])
 
   // When returning to the list from an overlay route (reading, share), refresh
   // the current view silently — no spinner — so a just-saved or just-changed
@@ -86,17 +89,24 @@ export default function AppShell() {
     prevPath.current = location.pathname
     if (!cameBack) return
     if (view === 'highlights') {
-      api.listAllHighlights().then(setAllHighlights).catch(() => {})
+      api.listAllHighlights(highlightsTag).then(setAllHighlights).catch(() => {})
     } else if (view === 'favorites') {
       api.listFavorites().then(setFavorites).catch(() => {})
     } else if (view === 'queue') {
       api.listItems(queueStatus, tagFilter).then(setItems).catch(() => {})
     }
-  }, [location.pathname, view, queueStatus, tagFilter])
+  }, [location.pathname, view, queueStatus, tagFilter, highlightsTag])
 
+  // After saving from any view, land on the fresh Queue so the new item is
+  // visible. The optimistic prepend covers the case where we were already there
+  // (no reload fires); otherwise the view switch reloads the queue.
   function handleAdded(item: Item) {
-    setItems((prev) => [item, ...prev])
     setError(null)
+    setItems((prev) => [item, ...prev])
+    setShowTagline(false)
+    setTagFilter(null)
+    setQueueStatus('queued')
+    setView('queue')
   }
 
   function handleOpen(item: Item) {
@@ -229,11 +239,12 @@ export default function AppShell() {
     }
   }
 
-  // Any navigation dismisses the first-load tagline. Leaving the queue also
-  // clears the tag filter, which only makes sense there.
+  // Any navigation dismisses the first-load tagline. Each view's own tag filter
+  // is cleared when leaving it, so filters don't leak between screens.
   function changeView(next: View) {
     setShowTagline(false)
     if (next !== 'queue') setTagFilter(null)
+    if (next !== 'highlights') setHighlightsTag(null)
     setView(next)
   }
 
@@ -254,7 +265,7 @@ export default function AppShell() {
       )}
 
       {/* Desktop top tabs. Mobile uses the fixed bottom nav instead. */}
-      <nav className="mb-5 mt-4 hidden gap-1 border-b border-neutral-200 sm:flex">
+      <nav className="mb-1 mt-4 hidden gap-1 border-b border-neutral-200 sm:flex">
         <TabButton active={view === 'queue'} onClick={() => changeView('queue')}>
           Queue
         </TabButton>
@@ -269,11 +280,13 @@ export default function AppShell() {
         </TabButton>
       </nav>
 
+      {/* Save controls stay available in every view; saving lands on the queue. */}
+      <div className="mt-4">
+        <AddItemBar onAdded={handleAdded} onError={setError} />
+      </div>
+
       {view === 'queue' && (
-        <div className="mt-4 space-y-3">
-          {queueStatus === 'queued' && (
-            <AddItemBar onAdded={handleAdded} onError={setError} />
-          )}
+        <div className="mt-3 space-y-3">
           <div className="flex gap-1">
             <SegButton
               active={queueStatus === 'queued'}
@@ -294,6 +307,16 @@ export default function AppShell() {
         </div>
       )}
 
+      {view === 'highlights' && availableTags.length > 0 && (
+        <div className="mt-3">
+          <TagFilterBar
+            tags={availableTags}
+            active={highlightsTag}
+            onSelect={setHighlightsTag}
+          />
+        </div>
+      )}
+
       {error && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
           {error}
@@ -309,6 +332,7 @@ export default function AppShell() {
           <HighlightsView
             highlights={allHighlights}
             onOpenSource={(hl) => openSource(hl.item_id, hl.id)}
+            filtered={!!highlightsTag}
           />
         ) : view === 'favorites' ? (
           <FavoritesList
@@ -316,6 +340,7 @@ export default function AppShell() {
             onOpen={handleOpen}
             onToggleFavorite={handleToggleFavorite}
             onSetTags={handleSetTags}
+            allTags={allTagNames}
           />
         ) : items.length === 0 ? (
           <EmptyState queueStatus={queueStatus} filtered={!!tagFilter} />
@@ -327,6 +352,7 @@ export default function AppShell() {
             onDelete={handleDelete}
             onToggleFavorite={handleToggleFavorite}
             onSetTags={handleSetTags}
+            allTags={allTagNames}
           />
         ) : (
           <QueueList
@@ -337,6 +363,7 @@ export default function AppShell() {
             onDelete={handleDelete}
             onToggleFavorite={handleToggleFavorite}
             onSetTags={handleSetTags}
+            allTags={allTagNames}
           />
         )}
       </div>

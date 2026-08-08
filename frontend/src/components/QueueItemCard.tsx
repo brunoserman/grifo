@@ -4,7 +4,9 @@ import type { Item } from '../types'
 import { readingTime, formatDate, itemSourceLabel } from '../format'
 import FavoriteButton from './FavoriteButton'
 import TagEditor from './TagEditor'
+import TagChips from './TagChips'
 import ItemHeading from './ItemHeading'
+import OverflowMenu, { MenuRow } from './OverflowMenu'
 
 type Props = {
   item: Item
@@ -13,6 +15,7 @@ type Props = {
   onDelete: (id: string) => void
   onToggleFavorite: (item: Item) => void
   onSetTags: (id: string, tags: string[]) => void
+  allTags: string[]
 }
 
 // One card in the queue. The whole card is the drag handle.
@@ -23,6 +26,7 @@ export default function QueueItemCard({
   onDelete,
   onToggleFavorite,
   onSetTags,
+  allTags,
 }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
@@ -45,14 +49,14 @@ export default function QueueItemCard({
       {...listeners}
       className="flex cursor-grab flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm active:cursor-grabbing"
     >
-      {/* Text spans the full width, so titles and meta are not squeezed by the
-          buttons. The title is draggable and, on a click/tap, opens the item. */}
+      {/* The title is draggable and, on a click/tap, opens the item. */}
       <ItemHeading item={item} onOpen={onOpen} meta={meta} />
 
-      <TagEditor tags={item.tags} onSave={(tags) => onSetTags(item.id, tags)} />
+      <TagChips tags={item.tags} />
 
-      {/* onPointerDown stops the drag sensor so a button press never drags. */}
-      <div className="flex flex-wrap gap-2">
+      {/* Primary actions stay visible; the rest live in the overflow menu.
+          onPointerDown stops the drag sensor so a button press never drags. */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
@@ -61,23 +65,40 @@ export default function QueueItemCard({
         >
           Open
         </button>
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onMarkRead(item.id)}
-          className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
-        >
-          Mark read
-        </button>
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onDelete(item.id)}
-          className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50"
-        >
-          Delete
-        </button>
         <FavoriteButton item={item} onToggle={onToggleFavorite} />
+        <OverflowMenu className="ml-auto">
+          {(close) => (
+            <>
+              <MenuRow
+                onClick={() => {
+                  onMarkRead(item.id)
+                  close()
+                }}
+              >
+                Mark read
+              </MenuRow>
+              <MenuRow
+                danger
+                onClick={() => {
+                  onDelete(item.id)
+                  close()
+                }}
+              >
+                Delete
+              </MenuRow>
+              <div className="mt-1 border-t border-neutral-100 px-2.5 py-1.5">
+                <p className="mb-1 text-[11px] uppercase tracking-wide text-neutral-400">
+                  Tags
+                </p>
+                <TagEditor
+                  tags={item.tags}
+                  suggestions={allTags}
+                  onSave={(tags) => onSetTags(item.id, tags)}
+                />
+              </div>
+            </>
+          )}
+        </OverflowMenu>
       </div>
     </div>
   )

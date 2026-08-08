@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { SearchResult } from '../types'
+import type { SearchScope } from '../api'
 import * as api from '../api'
 import { typeLabel } from '../format'
 
@@ -7,17 +8,26 @@ type Props = {
   onOpenSource: (itemId: string, highlightId: string | null) => void
 }
 
-// One search field over every field of every article, note and highlight —
-// queued or read. The prefix wildcard on the last word is added by the Worker,
-// so partial words match without stemming.
+const SCOPES: { value: SearchScope; label: string }[] = [
+  { value: 'all', label: 'Everything' },
+  { value: 'queue', label: 'Queue' },
+  { value: 'read', label: 'Read' },
+  { value: 'highlights', label: 'Highlights' },
+]
+
+// One search field over every field of every article, note and highlight. A
+// scope filter restricts it to the queue, the read archive, or highlights. The
+// prefix wildcard on the last word is added by the Worker, so partial words
+// match without stemming.
 export default function SearchView({ onOpenSource }: Props) {
   const [q, setQ] = useState('')
+  const [scope, setScope] = useState<SearchScope>('all')
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Debounced search.
+  // Debounced search. Re-runs when the query or the scope changes.
   useEffect(() => {
     if (!q.trim()) {
       setResults([])
@@ -29,7 +39,7 @@ export default function SearchView({ onOpenSource }: Props) {
       setLoading(true)
       setError(null)
       api
-        .search(q)
+        .search(q, scope)
         .then((r) => {
           setResults(r.results)
           setSearched(true)
@@ -38,7 +48,7 @@ export default function SearchView({ onOpenSource }: Props) {
         .finally(() => setLoading(false))
     }, 250)
     return () => clearTimeout(timer)
-  }, [q])
+  }, [q, scope])
 
   return (
     <div>
@@ -50,6 +60,25 @@ export default function SearchView({ onOpenSource }: Props) {
         autoFocus
         className="w-full rounded-lg border border-neutral-300 bg-white px-4 py-2.5 outline-none focus:border-neutral-500"
       />
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {SCOPES.map((s) => (
+          <button
+            key={s.value}
+            type="button"
+            onClick={() => setScope(s.value)}
+            aria-pressed={scope === s.value}
+            className={
+              'rounded-full border px-3 py-0.5 text-xs ' +
+              (scope === s.value
+                ? 'border-neutral-900 bg-neutral-900 text-white'
+                : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100')
+            }
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
 
       {error && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">

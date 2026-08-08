@@ -2,7 +2,9 @@ import type { Item } from '../types'
 import { readingTime, formatDate, itemSourceLabel } from '../format'
 import FavoriteButton from './FavoriteButton'
 import TagEditor from './TagEditor'
+import TagChips from './TagChips'
 import ItemHeading from './ItemHeading'
+import OverflowMenu, { MenuRow } from './OverflowMenu'
 
 type Props = {
   items: Item[]
@@ -11,6 +13,7 @@ type Props = {
   onDelete: (id: string) => void
   onToggleFavorite: (item: Item) => void
   onSetTags: (id: string, tags: string[]) => void
+  allTags: string[]
 }
 
 // The read archive. Not draggable: order here is "most recently read first",
@@ -23,6 +26,7 @@ export default function ArchiveList({
   onDelete,
   onToggleFavorite,
   onSetTags,
+  allTags,
 }: Props) {
   return (
     <div className="space-y-2">
@@ -42,9 +46,9 @@ export default function ArchiveList({
           >
             <ItemHeading item={item} onOpen={onOpen} meta={meta} />
 
-            <TagEditor tags={item.tags} onSave={(tags) => onSetTags(item.id, tags)} />
+            <TagChips tags={item.tags} />
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => onOpen(item)}
@@ -52,21 +56,40 @@ export default function ArchiveList({
               >
                 Open
               </button>
-              <button
-                type="button"
-                onClick={() => onReturn(item.id)}
-                className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
-              >
-                Return to queue
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete(item.id)}
-                className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50"
-              >
-                Delete
-              </button>
               <FavoriteButton item={item} onToggle={onToggleFavorite} />
+              <OverflowMenu className="ml-auto">
+                {(close) => (
+                  <>
+                    <MenuRow
+                      onClick={() => {
+                        onReturn(item.id)
+                        close()
+                      }}
+                    >
+                      Return to queue
+                    </MenuRow>
+                    <MenuRow
+                      danger
+                      onClick={() => {
+                        onDelete(item.id)
+                        close()
+                      }}
+                    >
+                      Delete
+                    </MenuRow>
+                    <div className="mt-1 border-t border-neutral-100 px-2.5 py-1.5">
+                      <p className="mb-1 text-[11px] uppercase tracking-wide text-neutral-400">
+                        Tags
+                      </p>
+                      <TagEditor
+                        tags={item.tags}
+                        suggestions={allTags}
+                        onSave={(tags) => onSetTags(item.id, tags)}
+                      />
+                    </div>
+                  </>
+                )}
+              </OverflowMenu>
             </div>
           </div>
         )
