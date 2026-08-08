@@ -29,7 +29,11 @@ export const listItems = (
   return request<Item[]>(`/api/items?${params.toString()}`)
 }
 
-export const listFavorites = () => request<Item[]>('/api/items?favorite=1')
+export const listFavorites = (tag?: string | null) => {
+  const params = new URLSearchParams({ favorite: '1' })
+  if (tag) params.set('tag', tag)
+  return request<Item[]>(`/api/items?${params.toString()}`)
+}
 
 export const listTags = () => request<TagCount[]>('/api/tags')
 

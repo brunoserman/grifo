@@ -38,6 +38,7 @@ export default function AppShell() {
   const [availableTags, setAvailableTags] = useState<TagCount[]>([])
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [highlightsTag, setHighlightsTag] = useState<string | null>(null)
+  const [favoritesTag, setFavoritesTag] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // The tagline is shown once, on first load, then reclaimed for content.
@@ -68,7 +69,7 @@ export default function AppShell() {
       view === 'highlights'
         ? api.listAllHighlights(highlightsTag).then((h) => active && setAllHighlights(h))
         : view === 'favorites'
-          ? api.listFavorites().then((f) => active && setFavorites(f))
+          ? api.listFavorites(favoritesTag).then((f) => active && setFavorites(f))
           : api
               .listItems(queueStatus, tagFilter)
               .then((d) => active && setItems(d))
@@ -78,7 +79,7 @@ export default function AppShell() {
     return () => {
       active = false
     }
-  }, [view, queueStatus, tagFilter, highlightsTag])
+  }, [view, queueStatus, tagFilter, highlightsTag, favoritesTag])
 
   // When returning to the list from an overlay route (reading, share), refresh
   // the current view silently — no spinner — so a just-saved or just-changed
@@ -91,11 +92,11 @@ export default function AppShell() {
     if (view === 'highlights') {
       api.listAllHighlights(highlightsTag).then(setAllHighlights).catch(() => {})
     } else if (view === 'favorites') {
-      api.listFavorites().then(setFavorites).catch(() => {})
+      api.listFavorites(favoritesTag).then(setFavorites).catch(() => {})
     } else if (view === 'queue') {
       api.listItems(queueStatus, tagFilter).then(setItems).catch(() => {})
     }
-  }, [location.pathname, view, queueStatus, tagFilter, highlightsTag])
+  }, [location.pathname, view, queueStatus, tagFilter, highlightsTag, favoritesTag])
 
   // After saving from any view, land on the fresh Queue so the new item is
   // visible. The optimistic prepend covers the case where we were already there
@@ -196,7 +197,13 @@ export default function AppShell() {
             (i) => i.id !== id || !tagFilter || updated.tags.includes(tagFilter)
           )
       )
-      setFavorites((prev) => prev.map((i) => (i.id === id ? updated : i)))
+      setFavorites((prev) =>
+        prev
+          .map((i) => (i.id === id ? updated : i))
+          .filter(
+            (i) => i.id !== id || !favoritesTag || updated.tags.includes(favoritesTag)
+          )
+      )
       refreshTags()
     } catch (e) {
       setItems(prevItems)
@@ -264,6 +271,7 @@ export default function AppShell() {
     setShowTagline(false)
     if (next !== 'queue') setTagFilter(null)
     if (next !== 'highlights') setHighlightsTag(null)
+    if (next !== 'favorites') setFavoritesTag(null)
     setView(next)
   }
 
@@ -333,6 +341,16 @@ export default function AppShell() {
         </div>
       )}
 
+      {view === 'favorites' && availableTags.length > 0 && (
+        <div className="mt-3">
+          <TagFilterBar
+            tags={availableTags}
+            active={favoritesTag}
+            onSelect={setFavoritesTag}
+          />
+        </div>
+      )}
+
       {error && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
           {error}
@@ -358,6 +376,7 @@ export default function AppShell() {
             onSetTags={handleSetTags}
             onRename={handleRename}
             allTags={allTagNames}
+            filtered={!!favoritesTag}
           />
         ) : items.length === 0 ? (
           <EmptyState queueStatus={queueStatus} filtered={!!tagFilter} />

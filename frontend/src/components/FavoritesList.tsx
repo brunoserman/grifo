@@ -9,6 +9,7 @@ type Props = {
   onSetTags: (id: string, tags: string[]) => void
   onRename: (id: string, title: string) => void
   allTags: string[]
+  filtered?: boolean
 }
 
 // Every favorited item, links and notes together, read or unread. Independent
@@ -21,11 +22,14 @@ export default function FavoritesList({
   onSetTags,
   onRename,
   allTags,
+  filtered,
 }: Props) {
   if (items.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
-        No favorites yet. Star any item to keep it here.
+        {filtered
+          ? 'No favorites with this tag. Pick another tag or “All”.'
+          : 'No favorites yet. Star any item to keep it here.'}
       </p>
     )
   }
