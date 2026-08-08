@@ -1,8 +1,5 @@
 import { useState } from 'react'
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import type { Item } from '../types'
-import { readingTime, formatDate, itemSourceLabel } from '../format'
 import TagEditor from './TagEditor'
 import TagChips from './TagChips'
 import ItemHeading from './ItemHeading'
@@ -10,49 +7,37 @@ import OverflowMenu, { MenuRow } from './OverflowMenu'
 
 type Props = {
   item: Item
+  meta: string
   onOpen: (item: Item) => void
-  onMarkRead: (id: string) => void
-  onDelete: (id: string) => void
   onToggleFavorite: (item: Item) => void
   onSetTags: (id: string, tags: string[]) => void
   onRename: (id: string, title: string) => void
   allTags: string[]
+  // A visible secondary button next to Open (e.g. Return to queue). Omitted when
+  // the list has no such action (favorites).
+  primaryAction?: { label: string; onClick: () => void }
+  // Extra menu rows (e.g. Delete) inserted after the favorite toggle.
+  menuExtra?: (close: () => void) => React.ReactNode
 }
 
-// One card in the queue. The whole card is the drag handle.
-export default function QueueItemCard({
+// A non-draggable item card (read archive, favorites). Open and an optional
+// primary action stay visible; renaming, favorite, list-specific actions and
+// tag editing live in the overflow menu.
+export default function StaticItemCard({
   item,
+  meta,
   onOpen,
-  onMarkRead,
-  onDelete,
   onToggleFavorite,
   onSetTags,
   onRename,
   allTags,
+  primaryAction,
+  menuExtra,
 }: Props) {
   const [renaming, setRenaming] = useState(false)
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: item.id })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  }
-
-  const meta = [itemSourceLabel(item), readingTime(item), formatDate(item.saved_at)]
-    .filter(Boolean)
-    .join(' · ')
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className="flex cursor-grab flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm active:cursor-grabbing"
-    >
-      {/* The title is draggable and, on a click/tap, opens the item. */}
+    <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
       <ItemHeading
         item={item}
         onOpen={onOpen}
@@ -67,25 +52,23 @@ export default function QueueItemCard({
 
       <TagChips tags={item.tags} />
 
-      {/* Primary actions stay visible; the rest live in the overflow menu.
-          onPointerDown stops the drag sensor so a button press never drags. */}
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onOpen(item)}
           className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
         >
           Open
         </button>
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onMarkRead(item.id)}
-          className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
-        >
-          Mark read
-        </button>
+        {primaryAction && (
+          <button
+            type="button"
+            onClick={primaryAction.onClick}
+            className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
+          >
+            {primaryAction.label}
+          </button>
+        )}
         <OverflowMenu className="ml-auto">
           {(close) => (
             <>
@@ -105,15 +88,7 @@ export default function QueueItemCard({
               >
                 {item.favorite ? 'Remove from favorites' : 'Add to favorites'}
               </MenuRow>
-              <MenuRow
-                danger
-                onClick={() => {
-                  onDelete(item.id)
-                  close()
-                }}
-              >
-                Delete
-              </MenuRow>
+              {menuExtra?.(close)}
               <div className="mt-1 border-t border-neutral-100 px-2.5 py-1.5">
                 <p className="mb-1 text-[11px] uppercase tracking-wide text-neutral-400">
                   Tags

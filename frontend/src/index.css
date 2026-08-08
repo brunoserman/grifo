@@ -22,6 +22,21 @@ body {
   display: none;
 }
 
+/* Mobile fixed bottom nav: keep the bar clear of the Android/iOS gesture area,
+   and reserve room under scrollable content so the last item isn't hidden
+   behind it. On desktop there is no bottom nav, so the reserve collapses. */
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pb-bottom-nav {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 640px) {
+  .pb-bottom-nav {
+    padding-bottom: 2rem;
+  }
+}
+
 /* Typography for the reading view (extracted article HTML or note text).
    A single comfortable column, capped near 68 characters and centered, with
    generous line-height and spacing — a proper reader, like Kindle/Safari

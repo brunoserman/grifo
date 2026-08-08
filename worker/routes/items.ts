@@ -93,6 +93,9 @@ async function saveLink(c: Ctx, url?: string) {
 
   const id = crypto.randomUUID()
   const title = extracted?.title || url
+  // If a wrapper (e.g. a LinkedIn post) resolved to a YouTube video, store the
+  // video URL as the source so "Open" plays it.
+  const sourceUrl = extracted?.resolved_url || url
   // 'ok' only when a real article body came back. A page with just a title
   // (LinkedIn, YouTube, a SPA) is still saved, but as 'failed', so it keeps
   // opening the original URL while being identifiable in the queue.
@@ -109,7 +112,7 @@ async function saveLink(c: Ctx, url?: string) {
   ).bind(
     id,
     title,
-    url,
+    sourceUrl,
     extracted?.author ?? null,
     extracted?.site_name ?? null,
     extracted?.excerpt ?? null,
@@ -202,6 +205,31 @@ async function editNote(c: Ctx, id: string, title?: string, text?: string) {
       author: null,
       site_name: null,
       content_text: nextText,
+    }),
+  ])
+
+  const item = await getItem(c.env.DB, id)
+  return c.json(item)
+}
+
+// Edit only the title of any item (link, PDF or note), used to clean up a card
+// whose name wasn't extracted well. Content is untouched; the title is reindexed
+// while the item's other indexed fields are preserved.
+async function editTitle(c: Ctx, id: string, title: string) {
+  const existing = await getItem(c.env.DB, id)
+  if (!existing) return c.json({ error: 'Item not found' }, 404)
+
+  const nextTitle = title.trim()
+  if (!nextTitle) return c.json({ error: 'A title is required' }, 400)
+
+  await c.env.DB.batch([
+    c.env.DB.prepare('UPDATE items SET title = ? WHERE id = ?').bind(nextTitle, id),
+    ...indexItemStatements(c.env.DB, {
+      id,
+      title: nextTitle,
+      author: existing.author,
+      site_name: existing.site_name,
+      content_text: existing.content_text,
     }),
   ])
 
@@ -360,10 +388,9 @@ items.get('/items/:id/file', async (c) => {
 })
 
 // PATCH /api/items/:id
-// Mark as read / requeue, set an explicit position, toggle favorite, or edit a
-// note's title and text. Editing a note re-derives its content and reindexes;
-// the other changes never touch indexed content, so they leave the FTS tables
-// alone.
+// Mark as read / requeue, set an explicit position, toggle favorite, edit a
+// note's title and text, or rename any item. Edits that change indexed content
+// reindex; the status/position/favorite changes leave the FTS tables alone.
 items.patch('/items/:id', async (c) => {
   const id = c.req.param('id')
   const body = await c.req.json<{
@@ -374,9 +401,13 @@ items.patch('/items/:id', async (c) => {
     text?: string
   }>()
 
-  // Editing a note is its own path: it rewrites content and must reindex.
-  if (body.title !== undefined || body.text !== undefined) {
+  // A note edit (title + body) rewrites content; a bare title is a rename that
+  // works for any item type. Both reindex.
+  if (body.text !== undefined) {
     return editNote(c, id, body.title, body.text)
+  }
+  if (body.title !== undefined) {
+    return editTitle(c, id, body.title)
   }
 
   const sets: string[] = []

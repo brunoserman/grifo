@@ -1,13 +1,15 @@
 import type { Item } from '../types'
-import { readingTime, formatDate, typeLabel } from '../format'
-import FavoriteButton from './FavoriteButton'
-import TagEditor from './TagEditor'
+import { readingTime, formatDate, itemSourceLabel } from '../format'
+import StaticItemCard from './StaticItemCard'
 
 type Props = {
   items: Item[]
   onOpen: (item: Item) => void
   onToggleFavorite: (item: Item) => void
   onSetTags: (id: string, tags: string[]) => void
+  onRename: (id: string, title: string) => void
+  allTags: string[]
+  filtered?: boolean
 }
 
 // Every favorited item, links and notes together, read or unread. Independent
@@ -18,11 +20,16 @@ export default function FavoritesList({
   onOpen,
   onToggleFavorite,
   onSetTags,
+  onRename,
+  allTags,
+  filtered,
 }: Props) {
   if (items.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
-        No favorites yet. Star any item to keep it here.
+        {filtered
+          ? 'No favorites with this tag. Pick another tag or “All”.'
+          : 'No favorites yet. Star any item to keep it here.'}
       </p>
     )
   }
@@ -31,7 +38,7 @@ export default function FavoritesList({
     <div className="space-y-2">
       {items.map((item) => {
         const meta = [
-          item.site_name || typeLabel[item.type],
+          itemSourceLabel(item),
           readingTime(item),
           item.status === 'read' ? 'read' : 'in queue',
           formatDate(item.saved_at),
@@ -40,34 +47,16 @@ export default function FavoritesList({
           .join(' · ')
 
         return (
-          <div
+          <StaticItemCard
             key={item.id}
-            className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm"
-          >
-            <div className="min-w-0">
-              <button
-                type="button"
-                onClick={() => onOpen(item)}
-                className="w-full text-left font-medium text-neutral-900 line-clamp-2 hover:underline"
-              >
-                {item.title}
-              </button>
-              <p className="mt-1 text-sm text-neutral-500">{meta}</p>
-            </div>
-
-            <TagEditor tags={item.tags} onSave={(tags) => onSetTags(item.id, tags)} />
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => onOpen(item)}
-                className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
-              >
-                Open
-              </button>
-              <FavoriteButton item={item} onToggle={onToggleFavorite} />
-            </div>
-          </div>
+            item={item}
+            meta={meta}
+            onOpen={onOpen}
+            onToggleFavorite={onToggleFavorite}
+            onSetTags={onSetTags}
+            onRename={onRename}
+            allTags={allTags}
+          />
         )
       })}
     </div>

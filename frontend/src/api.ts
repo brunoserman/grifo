@@ -29,7 +29,11 @@ export const listItems = (
   return request<Item[]>(`/api/items?${params.toString()}`)
 }
 
-export const listFavorites = () => request<Item[]>('/api/items?favorite=1')
+export const listFavorites = (tag?: string | null) => {
+  const params = new URLSearchParams({ favorite: '1' })
+  if (tag) params.set('tag', tag)
+  return request<Item[]>(`/api/items?${params.toString()}`)
+}
 
 export const listTags = () => request<TagCount[]>('/api/tags')
 
@@ -82,6 +86,14 @@ export const updateNote = (id: string, title: string, text: string) =>
     body: JSON.stringify({ title, text }),
   })
 
+// Rename any item (link, PDF or note) — title only, content untouched.
+export const updateItemTitle = (id: string, title: string) =>
+  request<Item>(`/api/items/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
+
 export const deleteItem = (id: string) =>
   request<{ ok: true }>(`/api/items/${id}`, { method: 'DELETE' })
 
@@ -107,10 +119,16 @@ export const createHighlight = (
 export const deleteHighlight = (id: string) =>
   request<{ ok: true }>(`/api/highlights/${id}`, { method: 'DELETE' })
 
-export const listAllHighlights = () =>
-  request<HighlightWithItem[]>('/api/highlights')
+export const listAllHighlights = (tag?: string | null) => {
+  const params = new URLSearchParams()
+  if (tag) params.set('tag', tag)
+  const qs = params.toString()
+  return request<HighlightWithItem[]>(`/api/highlights${qs ? `?${qs}` : ''}`)
+}
 
-export const search = (q: string) =>
+export type SearchScope = 'all' | 'queue' | 'read' | 'highlights'
+
+export const search = (q: string, scope: SearchScope = 'all') =>
   request<{ results: SearchResult[] }>(
-    `/api/search?q=${encodeURIComponent(q)}`
+    `/api/search?q=${encodeURIComponent(q)}&scope=${scope}`
   )

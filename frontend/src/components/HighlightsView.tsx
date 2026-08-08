@@ -5,15 +5,18 @@ import { typeLabel } from '../format'
 type Props = {
   highlights: HighlightWithItem[]
   onOpenSource: (highlight: HighlightWithItem) => void
+  filtered?: boolean
 }
 
 // Every highlight across all items, most recent first, each linking back to its
 // source. This is what closes success criterion 2 (find a passage fast).
-export default function HighlightsView({ highlights, onOpenSource }: Props) {
+export default function HighlightsView({ highlights, onOpenSource, filtered }: Props) {
   if (highlights.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
-        No highlights yet. Open a link or a note and select text to keep a passage.
+        {filtered
+          ? 'No highlights with this tag. Pick another tag or “All”.'
+          : 'No highlights yet. Open a link or a note and select text to keep a passage.'}
       </p>
     )
   }

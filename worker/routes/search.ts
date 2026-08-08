@@ -46,18 +46,30 @@ type Row = {
   rank: number
 }
 
-// GET /api/search?q=...
-// One ranked result set across every article, note and highlight — whatever
-// their status (queued or read). The query itself matches any indexed field:
-// title, author, site and content for items; text and note for highlights.
+// GET /api/search?q=...&scope=all|queue|read|highlights
+// A ranked result set for the chosen scope. The query matches any indexed
+// field: title, author, site and content for items; text and note for
+// highlights. Scope decides which branches run and, for items, which status:
+//   all        → items (any status) + highlights
+//   queue      → items with status 'queued'
+//   read       → items with status 'read'
+//   highlights → highlights only
 search.get('/search', async (c) => {
   const match = buildMatchQuery(c.req.query('q') ?? '')
   if (!match) return c.json({ results: [] })
 
+  const scope = c.req.query('scope') ?? 'all'
+  const includeItems = scope === 'all' || scope === 'queue' || scope === 'read'
+  const includeHighlights = scope === 'all' || scope === 'highlights'
+  const itemStatus = scope === 'queue' ? 'queued' : scope === 'read' ? 'read' : null
+
   // bm25() ranks by relevance (smaller is better). char(57344/57345) are the
   // OPEN/CLOSE markers; snippet column -1 lets FTS5 pick the best matching one.
-  const sql = `
-    SELECT * FROM (
+  const parts: string[] = []
+  const binds: string[] = []
+
+  if (includeItems) {
+    parts.push(`
       SELECT
         'item' AS kind,
         i.id AS item_id,
@@ -70,8 +82,14 @@ search.get('/search', async (c) => {
         bm25(items_fts) AS rank
       FROM items_fts
       JOIN items i ON i.id = items_fts.item_id
-      WHERE items_fts MATCH ?
-      UNION ALL
+      WHERE items_fts MATCH ?${itemStatus ? ' AND i.status = ?' : ''}
+    `)
+    binds.push(match)
+    if (itemStatus) binds.push(itemStatus)
+  }
+
+  if (includeHighlights) {
+    parts.push(`
       SELECT
         'highlight' AS kind,
         h.item_id AS item_id,
@@ -86,14 +104,21 @@ search.get('/search', async (c) => {
       JOIN highlights h ON h.id = highlights_fts.highlight_id
       JOIN items i ON i.id = h.item_id
       WHERE highlights_fts MATCH ?
-    )
+    `)
+    binds.push(match)
+  }
+
+  if (parts.length === 0) return c.json({ results: [] })
+
+  const sql = `
+    SELECT * FROM (${parts.join(' UNION ALL ')})
     ORDER BY rank ASC
     LIMIT 50
   `
 
   try {
     const { results } = await c.env.DB.prepare(sql)
-      .bind(match, match)
+      .bind(...binds)
       .all<Row>()
     return c.json({
       results: results.map((r) => ({

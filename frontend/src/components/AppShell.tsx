@@ -9,8 +9,12 @@ import FavoritesList from './FavoritesList'
 import TagFilterBar from './TagFilterBar'
 import HighlightsView from './HighlightsView'
 import SearchView from './SearchView'
+import BottomNav from './BottomNav'
 
-type View = 'queue' | 'read' | 'favorites' | 'highlights' | 'search'
+// Top-level destinations. "Read" is not one of them: the read archive is a
+// filter inside the Queue screen (queueStatus), on both mobile and desktop.
+type View = 'queue' | 'highlights' | 'search' | 'favorites'
+type QueueStatus = 'queued' | 'read'
 
 // Open an item for reading by navigating to its route (so it has its own URL
 // and the browser back button returns here). PDFs and links that could not be
@@ -27,13 +31,20 @@ export default function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
   const [view, setView] = useState<View>('queue')
+  const [queueStatus, setQueueStatus] = useState<QueueStatus>('queued')
   const [items, setItems] = useState<Item[]>([])
   const [favorites, setFavorites] = useState<Item[]>([])
   const [allHighlights, setAllHighlights] = useState<HighlightWithItem[]>([])
   const [availableTags, setAvailableTags] = useState<TagCount[]>([])
   const [tagFilter, setTagFilter] = useState<string | null>(null)
+  const [highlightsTag, setHighlightsTag] = useState<string | null>(null)
+  const [favoritesTag, setFavoritesTag] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // The tagline is shown once, on first load, then reclaimed for content.
+  const [showTagline, setShowTagline] = useState(true)
+
+  const allTagNames = availableTags.map((t) => t.tag)
 
   const refreshTags = () =>
     api.listTags().then(setAvailableTags).catch(() => {})
@@ -43,8 +54,8 @@ export default function AppShell() {
     refreshTags()
   }, [])
 
-  // Load the active view on mount and on tab change, showing the spinner. The
-  // tag filter only applies to the queue, and reloads it when changed.
+  // Load the active view on mount and when it changes, showing the spinner. The
+  // queue reloads when its status (queued/read) or tag filter changes too.
   useEffect(() => {
     if (view === 'search') {
       setLoading(false)
@@ -56,14 +67,11 @@ export default function AppShell() {
     setError(null)
     const load =
       view === 'highlights'
-        ? api.listAllHighlights().then((h) => active && setAllHighlights(h))
+        ? api.listAllHighlights(highlightsTag).then((h) => active && setAllHighlights(h))
         : view === 'favorites'
-          ? api.listFavorites().then((f) => active && setFavorites(f))
+          ? api.listFavorites(favoritesTag).then((f) => active && setFavorites(f))
           : api
-              .listItems(
-                view === 'read' ? 'read' : 'queued',
-                view === 'queue' ? tagFilter : null
-              )
+              .listItems(queueStatus, tagFilter)
               .then((d) => active && setItems(d))
     load
       .catch((e) => active && setError(e.message))
@@ -71,7 +79,7 @@ export default function AppShell() {
     return () => {
       active = false
     }
-  }, [view, tagFilter])
+  }, [view, queueStatus, tagFilter, highlightsTag, favoritesTag])
 
   // When returning to the list from an overlay route (reading, share), refresh
   // the current view silently — no spinner — so a just-saved or just-changed
@@ -82,20 +90,24 @@ export default function AppShell() {
     prevPath.current = location.pathname
     if (!cameBack) return
     if (view === 'highlights') {
-      api.listAllHighlights().then(setAllHighlights).catch(() => {})
+      api.listAllHighlights(highlightsTag).then(setAllHighlights).catch(() => {})
     } else if (view === 'favorites') {
-      api.listFavorites().then(setFavorites).catch(() => {})
-    } else if (view !== 'search') {
-      api
-        .listItems(view === 'read' ? 'read' : 'queued', view === 'queue' ? tagFilter : null)
-        .then(setItems)
-        .catch(() => {})
+      api.listFavorites(favoritesTag).then(setFavorites).catch(() => {})
+    } else if (view === 'queue') {
+      api.listItems(queueStatus, tagFilter).then(setItems).catch(() => {})
     }
-  }, [location.pathname, view, tagFilter])
+  }, [location.pathname, view, queueStatus, tagFilter, highlightsTag, favoritesTag])
 
+  // After saving from any view, land on the fresh Queue so the new item is
+  // visible. The optimistic prepend covers the case where we were already there
+  // (no reload fires); otherwise the view switch reloads the queue.
   function handleAdded(item: Item) {
-    setItems((prev) => [item, ...prev])
     setError(null)
+    setItems((prev) => [item, ...prev])
+    setShowTagline(false)
+    setTagFilter(null)
+    setQueueStatus('queued')
+    setView('queue')
   }
 
   function handleOpen(item: Item) {
@@ -163,8 +175,8 @@ export default function AppShell() {
 
   // Replace an item's tags from any list. Optimistic so the chip appears at once;
   // the server normalizes and returns the canonical item, which we reconcile. If
-  // a tag filter is active on the queue and the item no longer matches, it drops
-  // out. On failure the previous lists are restored.
+  // a tag filter is active and the item no longer matches, it drops out. On
+  // failure the previous lists are restored.
   async function handleSetTags(id: string, tags: string[]) {
     const prevItems = items
     const prevFavorites = favorites
@@ -182,19 +194,40 @@ export default function AppShell() {
         prev
           .map((i) => (i.id === id ? updated : i))
           .filter(
-            (i) =>
-              i.id !== id ||
-              view !== 'queue' ||
-              !tagFilter ||
-              updated.tags.includes(tagFilter)
+            (i) => i.id !== id || !tagFilter || updated.tags.includes(tagFilter)
           )
       )
-      setFavorites((prev) => prev.map((i) => (i.id === id ? updated : i)))
+      setFavorites((prev) =>
+        prev
+          .map((i) => (i.id === id ? updated : i))
+          .filter(
+            (i) => i.id !== id || !favoritesTag || updated.tags.includes(favoritesTag)
+          )
+      )
       refreshTags()
     } catch (e) {
       setItems(prevItems)
       setFavorites(prevFavorites)
       setError(e instanceof Error ? e.message : 'Could not update tags')
+    }
+  }
+
+  // Rename any item from any list. Optimistic; the server reindexes the title.
+  async function handleRename(id: string, title: string) {
+    const prevItems = items
+    const prevFavorites = favorites
+    const patch = (list: Item[]) =>
+      list.map((i) => (i.id === id ? { ...i, title } : i))
+    setItems(patch)
+    setFavorites(patch)
+    try {
+      const updated = await api.updateItemTitle(id, title)
+      setItems((prev) => prev.map((i) => (i.id === id ? updated : i)))
+      setFavorites((prev) => prev.map((i) => (i.id === id ? updated : i)))
+    } catch (e) {
+      setItems(prevItems)
+      setFavorites(prevFavorites)
+      setError(e instanceof Error ? e.message : 'Could not rename item')
     }
   }
 
@@ -214,7 +247,7 @@ export default function AppShell() {
       // Revert on failure by reloading whichever list is showing.
       setError(e instanceof Error ? e.message : 'Could not update favorite')
       if (view === 'favorites') api.listFavorites().then(setFavorites).catch(() => {})
-      else api.listItems(view === 'read' ? 'read' : 'queued').then(setItems).catch(() => {})
+      else api.listItems(queueStatus, tagFilter).then(setItems).catch(() => {})
     }
   }
 
@@ -232,31 +265,34 @@ export default function AppShell() {
     }
   }
 
-  // Switching tabs clears the tag filter, which only makes sense on the queue.
+  // Any navigation dismisses the first-load tagline. Each view's own tag filter
+  // is cleared when leaving it, so filters don't leak between screens.
   function changeView(next: View) {
+    setShowTagline(false)
     if (next !== 'queue') setTagFilter(null)
+    if (next !== 'highlights') setHighlightsTag(null)
+    if (next !== 'favorites') setFavoritesTag(null)
     setView(next)
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-2xl overflow-x-hidden px-4 py-8">
-      <header className="mb-6 flex items-center gap-3">
+    <div className="mx-auto min-h-screen max-w-2xl overflow-x-hidden px-4 pb-bottom-nav pt-5 sm:pt-8">
+      <header className="flex items-center gap-2">
         <img
           src="/icon-192.png"
           alt="Grifo"
-          width={40}
-          height={40}
-          className="h-10 w-10 shrink-0 rounded-md"
+          width={28}
+          height={28}
+          className="h-7 w-7 shrink-0 rounded"
         />
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Grifo</h1>
-          <p className="text-sm text-neutral-500">Read it, keep what matters.</p>
-        </div>
+        <h1 className="text-lg font-semibold tracking-tight">Grifo</h1>
       </header>
+      {showTagline && (
+        <p className="mt-1 text-sm text-neutral-500">Read it, keep what matters.</p>
+      )}
 
-      {/* The tab strip scrolls horizontally on its own when the labels don't fit
-          (five tabs on a narrow phone), so it never widens the page. */}
-      <nav className="no-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-neutral-200">
+      {/* Desktop top tabs. Mobile uses the fixed bottom nav instead. */}
+      <nav className="mb-1 mt-4 hidden gap-1 border-b border-neutral-200 sm:flex">
         <TabButton active={view === 'queue'} onClick={() => changeView('queue')}>
           Queue
         </TabButton>
@@ -266,27 +302,53 @@ export default function AppShell() {
         <TabButton active={view === 'search'} onClick={() => changeView('search')}>
           Search
         </TabButton>
-        <TabButton active={view === 'read'} onClick={() => changeView('read')}>
-          Read
-        </TabButton>
         <TabButton active={view === 'favorites'} onClick={() => changeView('favorites')}>
           Favorites
         </TabButton>
       </nav>
 
+      {/* Save controls belong to the Queue tab only (both queued and read). */}
       {view === 'queue' && (
-        <>
+        <div className="mt-4 space-y-3">
           <AddItemBar onAdded={handleAdded} onError={setError} />
+          <div className="flex gap-1">
+            <SegButton
+              active={queueStatus === 'queued'}
+              onClick={() => setQueueStatus('queued')}
+            >
+              Queue
+            </SegButton>
+            <SegButton
+              active={queueStatus === 'read'}
+              onClick={() => setQueueStatus('read')}
+            >
+              Read
+            </SegButton>
+          </div>
           {availableTags.length > 0 && (
-            <div className="mt-4">
-              <TagFilterBar
-                tags={availableTags}
-                active={tagFilter}
-                onSelect={setTagFilter}
-              />
-            </div>
+            <TagFilterBar tags={availableTags} active={tagFilter} onSelect={setTagFilter} />
           )}
-        </>
+        </div>
+      )}
+
+      {view === 'highlights' && availableTags.length > 0 && (
+        <div className="mt-3">
+          <TagFilterBar
+            tags={availableTags}
+            active={highlightsTag}
+            onSelect={setHighlightsTag}
+          />
+        </div>
+      )}
+
+      {view === 'favorites' && availableTags.length > 0 && (
+        <div className="mt-3">
+          <TagFilterBar
+            tags={availableTags}
+            active={favoritesTag}
+            onSelect={setFavoritesTag}
+          />
+        </div>
       )}
 
       {error && (
@@ -295,7 +357,7 @@ export default function AppShell() {
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="mt-4">
         {view === 'search' ? (
           <SearchView onOpenSource={openSource} />
         ) : loading ? (
@@ -304,6 +366,7 @@ export default function AppShell() {
           <HighlightsView
             highlights={allHighlights}
             onOpenSource={(hl) => openSource(hl.item_id, hl.id)}
+            filtered={!!highlightsTag}
           />
         ) : view === 'favorites' ? (
           <FavoritesList
@@ -311,10 +374,24 @@ export default function AppShell() {
             onOpen={handleOpen}
             onToggleFavorite={handleToggleFavorite}
             onSetTags={handleSetTags}
+            onRename={handleRename}
+            allTags={allTagNames}
+            filtered={!!favoritesTag}
           />
         ) : items.length === 0 ? (
-          <EmptyState view={view} filtered={view === 'queue' && !!tagFilter} />
-        ) : view === 'queue' ? (
+          <EmptyState queueStatus={queueStatus} filtered={!!tagFilter} />
+        ) : queueStatus === 'read' ? (
+          <ArchiveList
+            items={items}
+            onOpen={handleOpen}
+            onReturn={handleReturn}
+            onDelete={handleDelete}
+            onToggleFavorite={handleToggleFavorite}
+            onSetTags={handleSetTags}
+            onRename={handleRename}
+            allTags={allTagNames}
+          />
+        ) : (
           <QueueList
             items={items}
             onReorder={handleReorder}
@@ -323,18 +400,13 @@ export default function AppShell() {
             onDelete={handleDelete}
             onToggleFavorite={handleToggleFavorite}
             onSetTags={handleSetTags}
-          />
-        ) : (
-          <ArchiveList
-            items={items}
-            onOpen={handleOpen}
-            onReturn={handleReturn}
-            onDelete={handleDelete}
-            onToggleFavorite={handleToggleFavorite}
-            onSetTags={handleSetTags}
+            onRename={handleRename}
+            allTags={allTagNames}
           />
         )}
       </div>
+
+      <BottomNav active={view} onChange={changeView} />
     </div>
   )
 }
@@ -353,7 +425,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={
-        'shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium sm:px-4 ' +
+        'shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ' +
         (active
           ? 'border-neutral-900 text-neutral-900'
           : 'border-transparent text-neutral-500 hover:text-neutral-800')
@@ -364,14 +436,47 @@ function TabButton({
   )
 }
 
-function EmptyState({ view, filtered }: { view: View; filtered?: boolean }) {
+// The Queue/Read segmented control inside the Queue screen (both platforms).
+function SegButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={
+        'rounded-full border px-3 py-1 text-sm font-medium ' +
+        (active
+          ? 'border-neutral-900 bg-neutral-900 text-white'
+          : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100')
+      }
+    >
+      {children}
+    </button>
+  )
+}
+
+function EmptyState({
+  queueStatus,
+  filtered,
+}: {
+  queueStatus: QueueStatus
+  filtered?: boolean
+}) {
   return (
     <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
       {filtered
         ? 'No items with this tag. Pick another tag or “All”.'
-        : view === 'queue'
-          ? 'Your queue is empty. Save a link, a PDF, or a note to get started.'
-          : 'Nothing read yet. Items you mark as read land here.'}
+        : queueStatus === 'read'
+          ? 'Nothing read yet. Items you mark as read land here.'
+          : 'Your queue is empty. Save a link, a PDF, or a note to get started.'}
     </p>
   )
 }
