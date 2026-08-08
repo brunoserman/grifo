@@ -299,13 +299,10 @@ export default function AppShell() {
         </TabButton>
       </nav>
 
-      {/* Save controls stay available in every view; saving lands on the queue. */}
-      <div className="mt-4">
-        <AddItemBar onAdded={handleAdded} onError={setError} />
-      </div>
-
+      {/* Save controls belong to the Queue tab only (both queued and read). */}
       {view === 'queue' && (
-        <div className="mt-3 space-y-3">
+        <div className="mt-4 space-y-3">
+          <AddItemBar onAdded={handleAdded} onError={setError} />
           <div className="flex gap-1">
             <SegButton
               active={queueStatus === 'queued'}

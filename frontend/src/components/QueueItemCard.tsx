@@ -3,7 +3,6 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Item } from '../types'
 import { readingTime, formatDate, itemSourceLabel } from '../format'
-import FavoriteButton from './FavoriteButton'
 import TagEditor from './TagEditor'
 import TagChips from './TagChips'
 import ItemHeading from './ItemHeading'
@@ -79,7 +78,14 @@ export default function QueueItemCard({
         >
           Open
         </button>
-        <FavoriteButton item={item} onToggle={onToggleFavorite} />
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onMarkRead(item.id)}
+          className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
+        >
+          Mark read
+        </button>
         <OverflowMenu className="ml-auto">
           {(close) => (
             <>
@@ -93,11 +99,11 @@ export default function QueueItemCard({
               </MenuRow>
               <MenuRow
                 onClick={() => {
-                  onMarkRead(item.id)
+                  onToggleFavorite(item)
                   close()
                 }}
               >
-                Mark read
+                {item.favorite ? 'Remove from favorites' : 'Add to favorites'}
               </MenuRow>
               <MenuRow
                 danger

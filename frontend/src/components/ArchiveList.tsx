@@ -48,26 +48,17 @@ export default function ArchiveList({
             onSetTags={onSetTags}
             onRename={onRename}
             allTags={allTags}
+            primaryAction={{ label: 'Return to queue', onClick: () => onReturn(item.id) }}
             menuExtra={(close) => (
-              <>
-                <MenuRow
-                  onClick={() => {
-                    onReturn(item.id)
-                    close()
-                  }}
-                >
-                  Return to queue
-                </MenuRow>
-                <MenuRow
-                  danger
-                  onClick={() => {
-                    onDelete(item.id)
-                    close()
-                  }}
-                >
-                  Delete
-                </MenuRow>
-              </>
+              <MenuRow
+                danger
+                onClick={() => {
+                  onDelete(item.id)
+                  close()
+                }}
+              >
+                Delete
+              </MenuRow>
             )}
           />
         )

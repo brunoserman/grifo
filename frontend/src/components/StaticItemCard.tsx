@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { Item } from '../types'
-import FavoriteButton from './FavoriteButton'
 import TagEditor from './TagEditor'
 import TagChips from './TagChips'
 import ItemHeading from './ItemHeading'
@@ -14,13 +13,16 @@ type Props = {
   onSetTags: (id: string, tags: string[]) => void
   onRename: (id: string, title: string) => void
   allTags: string[]
-  // List-specific menu rows (e.g. Return to queue, Delete) inserted after
-  // "Edit title" and before the tag editor.
+  // A visible secondary button next to Open (e.g. Return to queue). Omitted when
+  // the list has no such action (favorites).
+  primaryAction?: { label: string; onClick: () => void }
+  // Extra menu rows (e.g. Delete) inserted after the favorite toggle.
   menuExtra?: (close: () => void) => React.ReactNode
 }
 
-// A non-draggable item card (read archive, favorites). Open and Favorite stay
-// visible; renaming, list-specific actions and tag editing live in the menu.
+// A non-draggable item card (read archive, favorites). Open and an optional
+// primary action stay visible; renaming, favorite, list-specific actions and
+// tag editing live in the overflow menu.
 export default function StaticItemCard({
   item,
   meta,
@@ -29,6 +31,7 @@ export default function StaticItemCard({
   onSetTags,
   onRename,
   allTags,
+  primaryAction,
   menuExtra,
 }: Props) {
   const [renaming, setRenaming] = useState(false)
@@ -57,7 +60,15 @@ export default function StaticItemCard({
         >
           Open
         </button>
-        <FavoriteButton item={item} onToggle={onToggleFavorite} />
+        {primaryAction && (
+          <button
+            type="button"
+            onClick={primaryAction.onClick}
+            className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
+          >
+            {primaryAction.label}
+          </button>
+        )}
         <OverflowMenu className="ml-auto">
           {(close) => (
             <>
@@ -68,6 +79,14 @@ export default function StaticItemCard({
                 }}
               >
                 Edit title
+              </MenuRow>
+              <MenuRow
+                onClick={() => {
+                  onToggleFavorite(item)
+                  close()
+                }}
+              >
+                {item.favorite ? 'Remove from favorites' : 'Add to favorites'}
               </MenuRow>
               {menuExtra?.(close)}
               <div className="mt-1 border-t border-neutral-100 px-2.5 py-1.5">
