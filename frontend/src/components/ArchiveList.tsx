@@ -1,7 +1,8 @@
 import type { Item } from '../types'
-import { readingTime, formatDate, typeLabel } from '../format'
+import { readingTime, formatDate, itemSourceLabel } from '../format'
 import FavoriteButton from './FavoriteButton'
 import TagEditor from './TagEditor'
+import ItemHeading from './ItemHeading'
 
 type Props = {
   items: Item[]
@@ -27,7 +28,7 @@ export default function ArchiveList({
     <div className="space-y-2">
       {items.map((item) => {
         const meta = [
-          item.site_name || typeLabel[item.type],
+          itemSourceLabel(item),
           readingTime(item),
           item.read_at ? `read ${formatDate(item.read_at)}` : null,
         ]
@@ -37,18 +38,9 @@ export default function ArchiveList({
         return (
           <div
             key={item.id}
-            className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm"
+            className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm"
           >
-            <div className="min-w-0">
-              <button
-                type="button"
-                onClick={() => onOpen(item)}
-                className="w-full text-left font-medium text-neutral-900 line-clamp-2 hover:underline"
-              >
-                {item.title}
-              </button>
-              <p className="mt-1 text-sm text-neutral-500">{meta}</p>
-            </div>
+            <ItemHeading item={item} onOpen={onOpen} meta={meta} />
 
             <TagEditor tags={item.tags} onSave={(tags) => onSetTags(item.id, tags)} />
 

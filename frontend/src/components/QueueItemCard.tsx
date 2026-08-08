@@ -1,9 +1,10 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Item } from '../types'
-import { readingTime, formatDate, typeLabel } from '../format'
+import { readingTime, formatDate, itemSourceLabel } from '../format'
 import FavoriteButton from './FavoriteButton'
 import TagEditor from './TagEditor'
+import ItemHeading from './ItemHeading'
 
 type Props = {
   item: Item
@@ -32,7 +33,7 @@ export default function QueueItemCard({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const meta = [item.site_name || typeLabel[item.type], readingTime(item), formatDate(item.saved_at)]
+  const meta = [itemSourceLabel(item), readingTime(item), formatDate(item.saved_at)]
     .filter(Boolean)
     .join(' · ')
 
@@ -42,25 +43,11 @@ export default function QueueItemCard({
       style={style}
       {...attributes}
       {...listeners}
-      className="flex cursor-grab flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm active:cursor-grabbing"
+      className="flex cursor-grab flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm active:cursor-grabbing"
     >
       {/* Text spans the full width, so titles and meta are not squeezed by the
           buttons. The title is draggable and, on a click/tap, opens the item. */}
-      <div className="min-w-0">
-        <button
-          type="button"
-          onClick={() => onOpen(item)}
-          className="w-full text-left font-medium text-neutral-900 line-clamp-2 hover:underline"
-        >
-          {item.title}
-        </button>
-        <p className="mt-1 text-sm text-neutral-500">{meta}</p>
-        {item.extraction === 'failed' && (
-          <p className="mt-1 text-xs text-amber-600">
-            Article text could not be extracted — opens the original link.
-          </p>
-        )}
-      </div>
+      <ItemHeading item={item} onOpen={onOpen} meta={meta} />
 
       <TagEditor tags={item.tags} onSave={(tags) => onSetTags(item.id, tags)} />
 
