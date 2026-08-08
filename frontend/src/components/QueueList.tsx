@@ -23,6 +23,7 @@ type Props = {
   onDelete: (id: string) => void
   onToggleFavorite: (item: Item) => void
   onSetTags: (id: string, tags: string[]) => void
+  onRename: (id: string, title: string) => void
   allTags: string[]
 }
 
@@ -36,6 +37,7 @@ export default function QueueList({
   onDelete,
   onToggleFavorite,
   onSetTags,
+  onRename,
   allTags,
 }: Props) {
   // Mouse: start dragging after a small movement, so a click still opens.
@@ -81,6 +83,7 @@ export default function QueueList({
               onDelete={onDelete}
               onToggleFavorite={onToggleFavorite}
               onSetTags={onSetTags}
+              onRename={onRename}
               allTags={allTags}
             />
           ))}

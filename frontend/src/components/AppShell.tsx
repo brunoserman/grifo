@@ -205,6 +205,25 @@ export default function AppShell() {
     }
   }
 
+  // Rename any item from any list. Optimistic; the server reindexes the title.
+  async function handleRename(id: string, title: string) {
+    const prevItems = items
+    const prevFavorites = favorites
+    const patch = (list: Item[]) =>
+      list.map((i) => (i.id === id ? { ...i, title } : i))
+    setItems(patch)
+    setFavorites(patch)
+    try {
+      const updated = await api.updateItemTitle(id, title)
+      setItems((prev) => prev.map((i) => (i.id === id ? updated : i)))
+      setFavorites((prev) => prev.map((i) => (i.id === id ? updated : i)))
+    } catch (e) {
+      setItems(prevItems)
+      setFavorites(prevFavorites)
+      setError(e instanceof Error ? e.message : 'Could not rename item')
+    }
+  }
+
   // Toggle favorite from any list. Optimistic: flip the flag on the item in the
   // queue/archive lists, and drop it from the Favorites list when unfavorited.
   async function handleToggleFavorite(item: Item) {
@@ -340,6 +359,7 @@ export default function AppShell() {
             onOpen={handleOpen}
             onToggleFavorite={handleToggleFavorite}
             onSetTags={handleSetTags}
+            onRename={handleRename}
             allTags={allTagNames}
           />
         ) : items.length === 0 ? (
@@ -352,6 +372,7 @@ export default function AppShell() {
             onDelete={handleDelete}
             onToggleFavorite={handleToggleFavorite}
             onSetTags={handleSetTags}
+            onRename={handleRename}
             allTags={allTagNames}
           />
         ) : (
@@ -363,6 +384,7 @@ export default function AppShell() {
             onDelete={handleDelete}
             onToggleFavorite={handleToggleFavorite}
             onSetTags={handleSetTags}
+            onRename={handleRename}
             allTags={allTagNames}
           />
         )}

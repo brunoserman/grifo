@@ -82,6 +82,14 @@ export const updateNote = (id: string, title: string, text: string) =>
     body: JSON.stringify({ title, text }),
   })
 
+// Rename any item (link, PDF or note) — title only, content untouched.
+export const updateItemTitle = (id: string, title: string) =>
+  request<Item>(`/api/items/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
+
 export const deleteItem = (id: string) =>
   request<{ ok: true }>(`/api/items/${id}`, { method: 'DELETE' })
 
