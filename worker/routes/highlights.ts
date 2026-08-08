@@ -73,11 +73,16 @@ highlights.get('/items/:id/highlights', async (c) => {
   return c.json(results)
 })
 
-// GET /api/highlights
+// GET /api/highlights?tag=...
 // Every highlight across all items, most recent first, joined with just enough
-// of the source item to link back to it.
+// of the source item to link back to it. An optional tag narrows to highlights
+// whose source item carries that tag.
 highlights.get('/highlights', async (c) => {
-  const { results } = await c.env.DB.prepare(
+  const tag = c.req.query('tag')?.trim() || null
+  const tagClause = tag
+    ? 'WHERE EXISTS (SELECT 1 FROM item_tags t WHERE t.item_id = i.id AND t.tag = ?)'
+    : ''
+  const stmt = c.env.DB.prepare(
     `SELECT h.*,
             i.title AS item_title,
             i.type AS item_type,
@@ -85,8 +90,10 @@ highlights.get('/highlights', async (c) => {
             i.source_url AS item_source_url
      FROM highlights h
      JOIN items i ON i.id = h.item_id
+     ${tagClause}
      ORDER BY h.created_at DESC`
-  ).all()
+  )
+  const { results } = await (tag ? stmt.bind(tag) : stmt).all()
   return c.json(results)
 })
 
