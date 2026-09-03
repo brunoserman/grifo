@@ -107,8 +107,8 @@ async function saveLink(c: Ctx, url?: string) {
   const insert = c.env.DB.prepare(
     `INSERT INTO items
        (id, type, title, source_url, author, site_name, excerpt,
-        content_html, content_text, word_count, position, extraction, extraction_error)
-     VALUES (?, 'link', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        content_html, content_text, word_count, thumbnail_url, position, extraction, extraction_error)
+     VALUES (?, 'link', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     id,
     title,
@@ -119,6 +119,7 @@ async function saveLink(c: Ctx, url?: string) {
     extracted?.content_html ?? null,
     extracted?.content_text ?? null,
     extracted?.word_count ?? null,
+    extracted?.thumbnail_url ?? null,
     newPosition(),
     extraction,
     extractionError

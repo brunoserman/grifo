@@ -45,6 +45,11 @@ export default function AppShell() {
   const [showTagline, setShowTagline] = useState(true)
 
   const allTagNames = availableTags.map((t) => t.tag)
+  // Shown next to the wordmark, matching the mockup's "18 saved". Only known
+  // and accurate for the unfiltered queue — there is no single-call global
+  // count, so it's hidden everywhere else rather than guessed.
+  const itemCount =
+    view === 'queue' && queueStatus === 'queued' && !tagFilter ? items.length : null
 
   const refreshTags = () =>
     api.listTags().then(setAvailableTags).catch(() => {})
@@ -277,24 +282,29 @@ export default function AppShell() {
 
   return (
     <div className="mx-auto min-h-screen max-w-2xl overflow-x-hidden px-4 pb-bottom-nav pt-5 sm:pt-8">
-      <header className="flex items-center gap-2">
+      <header className="flex items-center gap-2.5">
         <img
           src="/icon-192.png"
           alt="Grifo"
-          width={28}
-          height={28}
-          className="h-7 w-7 shrink-0 rounded"
+          width={26}
+          height={26}
+          className="h-[26px] w-[26px] shrink-0 rounded-[9px] shadow-[0_2px_8px_rgba(0,0,0,.4)]"
         />
-        <h1 className="text-lg font-semibold tracking-tight">Grifo</h1>
+        <h1 className="text-lg font-bold tracking-[-.02em] text-paper-50">Grifo</h1>
+        {itemCount !== null && (
+          <span className="ml-auto text-[11.5px] font-medium text-paper-500">
+            {itemCount} saved
+          </span>
+        )}
       </header>
       {showTagline && (
-        <p className="mt-1 text-sm text-neutral-500">Read it, keep what matters.</p>
+        <p className="mt-1 text-sm text-paper-500">Read it, keep what matters.</p>
       )}
 
       {/* Desktop top tabs. Mobile uses the fixed bottom nav instead. */}
-      <nav className="mb-1 mt-4 hidden gap-1 border-b border-neutral-200 sm:flex">
+      <nav className="mb-1 mt-4 hidden gap-1 rounded-full bg-white/[0.04] p-1 shadow-gel-track sm:flex">
         <TabButton active={view === 'queue'} onClick={() => changeView('queue')}>
-          Queue
+          Saved
         </TabButton>
         <TabButton active={view === 'highlights'} onClick={() => changeView('highlights')}>
           Highlights
@@ -311,12 +321,12 @@ export default function AppShell() {
       {view === 'queue' && (
         <div className="mt-4 space-y-3">
           <AddItemBar onAdded={handleAdded} onError={setError} />
-          <div className="flex gap-1">
+          <div className="flex gap-1.5 rounded-full bg-white/[0.04] p-1 shadow-gel-track">
             <SegButton
               active={queueStatus === 'queued'}
               onClick={() => setQueueStatus('queued')}
             >
-              Queue
+              Saved
             </SegButton>
             <SegButton
               active={queueStatus === 'read'}
@@ -352,7 +362,7 @@ export default function AppShell() {
       )}
 
       {error && (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <div className="mt-4 rounded-gel-sm bg-red-500/10 px-4 py-2 text-sm text-red-400 shadow-gel-sm">
           {error}
         </div>
       )}
@@ -361,7 +371,7 @@ export default function AppShell() {
         {view === 'search' ? (
           <SearchView onOpenSource={openSource} />
         ) : loading ? (
-          <p className="text-sm text-neutral-400">Loading…</p>
+          <p className="text-sm text-paper-600">Loading…</p>
         ) : view === 'highlights' ? (
           <HighlightsView
             highlights={allHighlights}
@@ -425,10 +435,10 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={
-        'shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ' +
+        'shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium ' +
         (active
-          ? 'border-neutral-900 text-neutral-900'
-          : 'border-transparent text-neutral-500 hover:text-neutral-800')
+          ? 'bg-gel-active text-paper-50 shadow-gel-pill'
+          : 'text-paper-500 hover:text-paper-300')
       }
     >
       {children}
@@ -452,10 +462,8 @@ function SegButton({
       onClick={onClick}
       aria-pressed={active}
       className={
-        'rounded-full border px-3 py-1 text-sm font-medium ' +
-        (active
-          ? 'border-neutral-900 bg-neutral-900 text-white'
-          : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100')
+        'flex-1 rounded-full px-3 py-1.5 text-[12.5px] font-semibold ' +
+        (active ? 'bg-gel-active text-paper-50 shadow-gel-pill' : 'text-paper-500')
       }
     >
       {children}
@@ -471,7 +479,7 @@ function EmptyState({
   filtered?: boolean
 }) {
   return (
-    <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
+    <p className="rounded-gel bg-white/[0.03] px-4 py-10 text-center text-sm text-paper-600 shadow-gel-sm">
       {filtered
         ? 'No items with this tag. Pick another tag or “All”.'
         : queueStatus === 'read'

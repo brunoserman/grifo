@@ -13,7 +13,7 @@ export default function TagFilterBar({ tags, active, onSelect }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs text-neutral-400">Filter:</span>
+      <span className="text-[11px] font-medium text-paper-600">Tags:</span>
       <Chip label="All" active={active === null} onClick={() => onSelect(null)} />
       {tags.map(({ tag, count }) => (
         <Chip
@@ -42,10 +42,10 @@ function Chip({
       onClick={onClick}
       aria-pressed={active}
       className={
-        'rounded-full border px-2.5 py-0.5 text-xs ' +
+        'rounded-full px-2.5 py-1 text-[11px] font-medium ' +
         (active
-          ? 'border-neutral-900 bg-neutral-900 text-white'
-          : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100')
+          ? 'bg-gel-active text-paper-50 shadow-gel-pill font-semibold'
+          : 'bg-white/[0.045] text-paper-400 shadow-gel-sm hover:bg-white/[0.08]')
       }
     >
       {label}

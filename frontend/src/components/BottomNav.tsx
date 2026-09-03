@@ -10,8 +10,8 @@ type Props = {
 // bottom safe area (see .bottom-nav in index.css).
 export default function BottomNav({ active, onChange }: Props) {
   return (
-    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white sm:hidden">
-      <div className="mx-auto flex max-w-2xl">
+    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-40 bg-ink-950/90 shadow-[inset_0_1px_0_rgba(255,255,255,.06)] backdrop-blur sm:hidden">
+      <div className="mx-auto flex max-w-2xl gap-1 px-2 py-1.5">
         {ITEMS.map(({ view, label, icon }) => (
           <button
             key={view}
@@ -19,8 +19,10 @@ export default function BottomNav({ active, onChange }: Props) {
             onClick={() => onChange(view)}
             aria-current={active === view ? 'page' : undefined}
             className={
-              'flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ' +
-              (active === view ? 'text-neutral-900' : 'text-neutral-400')
+              'flex flex-1 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[11px] font-medium ' +
+              (active === view
+                ? 'bg-gel-active text-paper-50 shadow-gel-pill'
+                : 'text-paper-500')
             }
           >
             {icon}
@@ -46,7 +48,7 @@ const iconProps = {
 const ITEMS: { view: NavView; label: string; icon: JSX.Element }[] = [
   {
     view: 'queue',
-    label: 'Queue',
+    label: 'Saved',
     icon: (
       <svg {...iconProps}>
         <line x1="8" y1="6" x2="21" y2="6" />
