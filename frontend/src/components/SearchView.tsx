@@ -5,6 +5,7 @@ import * as api from '../api'
 import { typeLabel } from '../format'
 import PageHeading from './PageHeading'
 import TagFilterBar from './TagFilterBar'
+import TypeIcon, { HighlightGlyph } from './TypeIcon'
 
 type Props = {
   onOpenSource: (itemId: string, highlightId: string | null) => void
@@ -27,48 +28,12 @@ function tagScopeFor(scope: SearchScope): TagScope | undefined {
   return undefined
 }
 
-const iconProps = {
-  width: 13,
-  height: 13,
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: '#8b8b94',
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-}
-
+// The highlighter glyph for a highlight result; otherwise the source item's
+// own type icon. SearchResult carries no source_url, so video links show as
+// a plain link icon here (unlike the card thumbnail, which can tell).
 function ResultIcon({ result }: { result: SearchResult }) {
-  if (result.kind === 'highlight') {
-    // The highlighter/pencil glyph used for the Highlights section elsewhere.
-    return (
-      <svg {...iconProps} strokeWidth="1.9">
-        <path d="M12 20h8" />
-        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z" />
-      </svg>
-    )
-  }
-  if (result.type === 'note') {
-    return (
-      <svg {...iconProps} strokeWidth="1.9">
-        <path d="M12 20h8" />
-        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z" />
-      </svg>
-    )
-  }
-  if (result.type === 'pdf') {
-    return (
-      <svg {...iconProps} strokeWidth="1.8">
-        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z" />
-        <path d="M14 3v5h5" />
-      </svg>
-    )
-  }
-  return (
-    <svg {...iconProps} strokeWidth="2">
-      <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
-      <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
-    </svg>
-  )
+  if (result.kind === 'highlight') return <HighlightGlyph size={13} stroke="#8b8b94" strokeWidth={1.9} />
+  return <TypeIcon type={result.type} size={13} stroke="#8b8b94" strokeWidth={result.type === 'pdf' ? 1.8 : result.type === 'note' ? 1.9 : 2} />
 }
 
 // One search field over every field of every article, note and highlight. A
