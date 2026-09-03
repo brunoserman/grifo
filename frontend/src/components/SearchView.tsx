@@ -89,9 +89,11 @@ export default function SearchView({ onOpenSource }: Props) {
     api.listTags(tagScopeFor(scope)).then(setTagCounts).catch(() => {})
   }, [scope])
 
-  // Debounced search. Re-runs when the query, scope or tag changes.
+  // Debounced search. Re-runs when the query, scope or tag changes. Picking a
+  // scope or a tag with no text is "browse this filter" — the Worker lists
+  // the most recent matches instead of running a text search.
   useEffect(() => {
-    if (!q.trim()) {
+    if (!q.trim() && scope === 'all' && !tag) {
       setResults([])
       setSearched(false)
       setError(null)

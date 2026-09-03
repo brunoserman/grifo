@@ -23,16 +23,20 @@ export default function HighlightsView({ highlights, onOpenSource, filtered }: P
     <div className="space-y-2.5">
       {highlights.map((hl) => (
         <div key={hl.id} className="rounded-gel-sm bg-gel-surface p-[15px] shadow-gel">
-          <p className="font-serif text-[14.5px] leading-[1.65] text-paper-300">{hl.text}</p>
+          <p className="font-serif text-[17px] leading-[1.7] text-paper-300 sm:text-[18px]">
+            {hl.text}
+          </p>
 
           {hl.note && (
-            <p className="mt-2 font-serif text-[13px] leading-[1.5] text-paper-600">{hl.note}</p>
+            <p className="mt-2.5 font-serif text-[14.5px] leading-[1.55] text-paper-600">
+              {hl.note}
+            </p>
           )}
 
           <button
             type="button"
             onClick={() => onOpenSource(hl)}
-            className="mt-[11px] block max-w-full truncate text-left text-xs font-semibold text-paper-300 underline decoration-accent-400/50 underline-offset-[3px] hover:text-paper-50"
+            className="mt-3 block max-w-full truncate text-left text-[13px] font-semibold text-accent-400 underline decoration-accent-400/50 underline-offset-[3px] hover:text-accent-300"
           >
             {hl.item_title}
           </button>

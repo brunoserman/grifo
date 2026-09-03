@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import type { Item } from '../types'
-import TagEditor from './TagEditor'
 import ItemHeading from './ItemHeading'
 import ItemThumbnail from './ItemThumbnail'
 import OverflowMenu, { MenuRow } from './OverflowMenu'
+import TagSheet from './TagSheet'
 
 type Props = {
   item: Item
@@ -35,6 +35,7 @@ export default function StaticItemCard({
   menuExtra,
 }: Props) {
   const [renaming, setRenaming] = useState(false)
+  const [taggingOpen, setTaggingOpen] = useState(false)
 
   return (
     <div
@@ -77,16 +78,14 @@ export default function StaticItemCard({
                 >
                   Edit title
                 </MenuRow>
-                <div className="mt-1 border-t border-white/[0.06] px-2.5 py-1.5">
-                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-paper-700">
-                    Add tag
-                  </p>
-                  <TagEditor
-                    tags={item.tags}
-                    suggestions={allTags}
-                    onSave={(tags) => onSetTags(item.id, tags)}
-                  />
-                </div>
+                <MenuRow
+                  onClick={() => {
+                    setTaggingOpen(true)
+                    close()
+                  }}
+                >
+                  Add tag
+                </MenuRow>
                 <div className="mt-1 border-t border-white/[0.06] pt-1">
                   <MenuRow
                     onClick={() => {
@@ -103,6 +102,15 @@ export default function StaticItemCard({
           </OverflowMenu>
         </div>
       </div>
+
+      {taggingOpen && (
+        <TagSheet
+          tags={item.tags}
+          suggestions={allTags}
+          onSave={(tags) => onSetTags(item.id, tags)}
+          onClose={() => setTaggingOpen(false)}
+        />
+      )}
     </div>
   )
 }
