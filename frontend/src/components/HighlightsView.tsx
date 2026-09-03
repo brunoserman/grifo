@@ -31,7 +31,7 @@ export default function HighlightsView({ highlights, onOpenSource, filtered }: P
           <div
             key={hl.id}
             onClick={() => onOpenSource(hl)}
-            className="cursor-pointer rounded-gel-sm bg-gel-surface p-[15px] shadow-gel"
+            className="cursor-pointer select-none rounded-gel-sm bg-gel-surface p-[15px] shadow-gel"
           >
             <div className="flex items-center gap-1.5">
               <TypeIcon
