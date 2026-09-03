@@ -38,11 +38,11 @@ export default function TagEditor({ tags, onSave, suggestions }: Props) {
 
   const applied = new Set(tags.map((t) => t.toLowerCase()))
   const draftLc = draft.trim().toLowerCase()
-  const matches = draftLc
-    ? suggestions
-        .filter((s) => !applied.has(s.toLowerCase()) && s.toLowerCase().includes(draftLc))
-        .slice(0, 6)
-    : []
+  // Existing tags not yet on this item are offered as suggestions right away
+  // (so you can just tap one), narrowed as you type.
+  const matches = suggestions
+    .filter((s) => !applied.has(s.toLowerCase()) && s.toLowerCase().includes(draftLc))
+    .slice(0, 6)
 
   return (
     <div className="flex flex-col gap-1.5" onPointerDown={(e) => e.stopPropagation()}>

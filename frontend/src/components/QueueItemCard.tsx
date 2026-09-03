@@ -4,7 +4,6 @@ import { CSS } from '@dnd-kit/utilities'
 import type { Item } from '../types'
 import { readingTime, formatDate, itemSourceLabel } from '../format'
 import TagEditor from './TagEditor'
-import TagChips from './TagChips'
 import ItemHeading from './ItemHeading'
 import ItemThumbnail from './ItemThumbnail'
 import FavoriteButton from './FavoriteButton'
@@ -42,7 +41,10 @@ export default function QueueItemCard({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const meta = [itemSourceLabel(item), readingTime(item), formatDate(item.saved_at)]
+  // Tags flow into the meta line as plain text, matching the design (not
+  // pill chips — those are reserved for the tag filter bar and the tag
+  // editor's applied-tags list).
+  const meta = [itemSourceLabel(item), readingTime(item), formatDate(item.saved_at), ...item.tags]
     .filter(Boolean)
     .join(' · ')
 
@@ -52,12 +54,14 @@ export default function QueueItemCard({
       style={style}
       {...attributes}
       {...listeners}
+      onClick={() => onOpen(item)}
       className="flex cursor-grab gap-3 rounded-gel bg-gel-surface p-3 shadow-gel active:cursor-grabbing"
     >
       <ItemThumbnail item={item} />
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        {/* The title is draggable and, on a click/tap, opens the item. */}
+        {/* The title is draggable and, on a click/tap, opens the item. So does
+            the rest of the card — see the card's own onClick above. */}
         <ItemHeading
           item={item}
           onOpen={onOpen}
@@ -70,11 +74,13 @@ export default function QueueItemCard({
           onCancelEdit={() => setRenaming(false)}
         />
 
-        <TagChips tags={item.tags} />
-
         {/* Primary actions stay visible; the rest live in the overflow menu.
-            onPointerDown stops the drag sensor so a button press never drags. */}
-        <div className="flex flex-wrap items-center gap-2">
+            onPointerDown stops the drag sensor so a button press never drags;
+            onClick is stopped too so a tap here never also opens the card. */}
+        <div
+          className="flex flex-wrap items-center gap-2"
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}

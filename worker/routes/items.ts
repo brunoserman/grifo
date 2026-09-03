@@ -315,9 +315,56 @@ items.get('/items', async (c) => {
   return c.json(results.map(rowToItem))
 })
 
-// GET /api/tags
-// Every distinct tag in use with how many items carry it, for the filter UI.
+// GET /api/tags?scope=...
+// Every distinct tag in use with how many items carry it. With no scope, this
+// is every item everywhere — used for tag-editor autocomplete, where any tag
+// in the system is a valid suggestion. A scope narrows the count to match
+// what a given screen's tag filter would actually show there:
+//   queued | read  -> items with that status
+//   favorite       -> favorited items
+//   highlights     -> highlights whose source item carries the tag (counts
+//                     highlights, matching what GET /api/highlights?tag=
+//                     returns, not items)
 items.get('/tags', async (c) => {
+  const scope = c.req.query('scope')
+
+  if (scope === 'queued' || scope === 'read') {
+    const { results } = await c.env.DB.prepare(
+      `SELECT it.tag AS tag, COUNT(*) AS count
+       FROM item_tags it
+       JOIN items i ON i.id = it.item_id
+       WHERE i.status = ?
+       GROUP BY it.tag
+       ORDER BY it.tag COLLATE NOCASE`
+    )
+      .bind(scope)
+      .all<{ tag: string; count: number }>()
+    return c.json(results)
+  }
+
+  if (scope === 'favorite') {
+    const { results } = await c.env.DB.prepare(
+      `SELECT it.tag AS tag, COUNT(*) AS count
+       FROM item_tags it
+       JOIN items i ON i.id = it.item_id
+       WHERE i.favorite = 1
+       GROUP BY it.tag
+       ORDER BY it.tag COLLATE NOCASE`
+    ).all<{ tag: string; count: number }>()
+    return c.json(results)
+  }
+
+  if (scope === 'highlights') {
+    const { results } = await c.env.DB.prepare(
+      `SELECT it.tag AS tag, COUNT(*) AS count
+       FROM item_tags it
+       JOIN highlights h ON h.item_id = it.item_id
+       GROUP BY it.tag
+       ORDER BY it.tag COLLATE NOCASE`
+    ).all<{ tag: string; count: number }>()
+    return c.json(results)
+  }
+
   const { results } = await c.env.DB.prepare(
     `SELECT tag, COUNT(*) AS count
      FROM item_tags

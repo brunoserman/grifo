@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { Item } from '../types'
 import TagEditor from './TagEditor'
-import TagChips from './TagChips'
 import ItemHeading from './ItemHeading'
 import ItemThumbnail from './ItemThumbnail'
 import OverflowMenu, { MenuRow } from './OverflowMenu'
@@ -38,7 +37,10 @@ export default function StaticItemCard({
   const [renaming, setRenaming] = useState(false)
 
   return (
-    <div className="flex gap-3 rounded-gel bg-gel-surface p-3 shadow-gel">
+    <div
+      onClick={() => onOpen(item)}
+      className="flex cursor-pointer gap-3 rounded-gel bg-gel-surface p-3 shadow-gel"
+    >
       <ItemThumbnail item={item} />
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -54,9 +56,7 @@ export default function StaticItemCard({
           onCancelEdit={() => setRenaming(false)}
         />
 
-        <TagChips tags={item.tags} />
-
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
           {primaryAction && (
             <button
               type="button"

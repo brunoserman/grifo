@@ -35,7 +35,13 @@ export default function AppShell() {
   const [items, setItems] = useState<Item[]>([])
   const [favorites, setFavorites] = useState<Item[]>([])
   const [allHighlights, setAllHighlights] = useState<HighlightWithItem[]>([])
+  // Unscoped, system-wide tag list — used only for the tag-editor's
+  // autocomplete, where any tag anywhere is a valid suggestion.
   const [availableTags, setAvailableTags] = useState<TagCount[]>([])
+  // Counts for whichever tag filter bar is currently showing, scoped to that
+  // screen (and, for Saved, to the Saved/Read segment) so a count matches
+  // what selecting that tag would actually show there.
+  const [scopedTagCounts, setScopedTagCounts] = useState<TagCount[]>([])
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [highlightsTag, setHighlightsTag] = useState<string | null>(null)
   const [favoritesTag, setFavoritesTag] = useState<string | null>(null)
@@ -51,13 +57,39 @@ export default function AppShell() {
   const itemCount =
     view === 'queue' && queueStatus === 'queued' && !tagFilter ? items.length : null
 
-  const refreshTags = () =>
-    api.listTags().then(setAvailableTags).catch(() => {})
+  // The api.TagScope matching the currently visible tag filter bar, or null
+  // where there isn't one (Search has its own category filter, no tags).
+  function currentTagScope(): api.TagScope | null {
+    if (view === 'queue') return queueStatus
+    if (view === 'highlights') return 'highlights'
+    if (view === 'favorites') return 'favorite'
+    return null
+  }
 
-  // Keep the tag list (for the filter bar) loaded on mount.
+  const refreshScopedTags = () => {
+    const scope = currentTagScope()
+    if (!scope) {
+      setScopedTagCounts([])
+      return
+    }
+    api.listTags(scope).then(setScopedTagCounts).catch(() => {})
+  }
+
+  const refreshTags = () => {
+    api.listTags().then(setAvailableTags).catch(() => {})
+    refreshScopedTags()
+  }
+
+  // Keep the system-wide tag list (for autocomplete) loaded on mount.
   useEffect(() => {
     refreshTags()
   }, [])
+
+  // Re-scope the filter bar's counts whenever the screen (or, on Saved, the
+  // Saved/Read segment) changes.
+  useEffect(() => {
+    refreshScopedTags()
+  }, [view, queueStatus])
 
   // Load the active view on mount and when it changes, showing the spinner. The
   // queue reloads when its status (queued/read) or tag filter changes too.
@@ -149,6 +181,9 @@ export default function AppShell() {
     setItems((prev) => prev.filter((i) => i.id !== id))
     try {
       await api.markRead(id)
+      // The item just moved between the Saved/Read segments, which changes
+      // both segments' tag counts.
+      refreshScopedTags()
     } catch (e) {
       setItems(previous)
       setError(e instanceof Error ? e.message : 'Could not mark as read')
@@ -160,6 +195,7 @@ export default function AppShell() {
     setItems((prev) => prev.filter((i) => i.id !== id))
     try {
       await api.returnToQueue(id)
+      refreshScopedTags()
     } catch (e) {
       setItems(previous)
       setError(e instanceof Error ? e.message : 'Could not return to queue')
@@ -248,6 +284,7 @@ export default function AppShell() {
     )
     try {
       await api.setFavorite(item.id, next === 1)
+      if (view === 'favorites') refreshScopedTags()
     } catch (e) {
       // Revert on failure by reloading whichever list is showing.
       setError(e instanceof Error ? e.message : 'Could not update favorite')
@@ -335,26 +372,26 @@ export default function AppShell() {
               Read
             </SegButton>
           </div>
-          {availableTags.length > 0 && (
-            <TagFilterBar tags={availableTags} active={tagFilter} onSelect={setTagFilter} />
+          {scopedTagCounts.length > 0 && (
+            <TagFilterBar tags={scopedTagCounts} active={tagFilter} onSelect={setTagFilter} />
           )}
         </div>
       )}
 
-      {view === 'highlights' && availableTags.length > 0 && (
+      {view === 'highlights' && scopedTagCounts.length > 0 && (
         <div className="mt-3">
           <TagFilterBar
-            tags={availableTags}
+            tags={scopedTagCounts}
             active={highlightsTag}
             onSelect={setHighlightsTag}
           />
         </div>
       )}
 
-      {view === 'favorites' && availableTags.length > 0 && (
+      {view === 'favorites' && scopedTagCounts.length > 0 && (
         <div className="mt-3">
           <TagFilterBar
-            tags={availableTags}
+            tags={scopedTagCounts}
             active={favoritesTag}
             onSelect={setFavoritesTag}
           />

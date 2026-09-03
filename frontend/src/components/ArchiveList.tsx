@@ -34,6 +34,7 @@ export default function ArchiveList({
           itemSourceLabel(item),
           readingTime(item),
           item.read_at ? `read ${formatDate(item.read_at)}` : null,
+          ...item.tags,
         ]
           .filter(Boolean)
           .join(' · ')

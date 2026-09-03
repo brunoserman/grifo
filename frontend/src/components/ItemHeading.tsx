@@ -37,7 +37,10 @@ export default function ItemHeading({
     <div className="min-w-0">
       <button
         type="button"
-        onClick={() => onOpen(item)}
+        onClick={(e) => {
+          e.stopPropagation()
+          onOpen(item)
+        }}
         className="line-clamp-2 w-full text-left text-[14.5px] font-semibold leading-snug tracking-[-.012em] text-paper-50 hover:underline"
       >
         {itemTitle(item)}

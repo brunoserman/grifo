@@ -35,7 +35,12 @@ export const listFavorites = (tag?: string | null) => {
   return request<Item[]>(`/api/items?${params.toString()}`)
 }
 
-export const listTags = () => request<TagCount[]>('/api/tags')
+// Scope narrows the counts to match what that screen's own tag filter would
+// show — omit it for the unscoped, system-wide list (tag-editor suggestions).
+export type TagScope = 'queued' | 'read' | 'favorite' | 'highlights'
+
+export const listTags = (scope?: TagScope) =>
+  request<TagCount[]>(`/api/tags${scope ? `?scope=${scope}` : ''}`)
 
 // Replace an item's whole tag set with the given list.
 export const setItemTags = (id: string, tags: string[]) =>
