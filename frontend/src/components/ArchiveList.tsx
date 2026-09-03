@@ -28,7 +28,7 @@ export default function ArchiveList({
   allTags,
 }: Props) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {items.map((item) => {
         const meta = [
           itemSourceLabel(item),

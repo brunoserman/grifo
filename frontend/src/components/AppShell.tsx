@@ -7,6 +7,7 @@ import QueueList from './QueueList'
 import ArchiveList from './ArchiveList'
 import FavoritesList from './FavoritesList'
 import TagFilterBar from './TagFilterBar'
+import PageHeading from './PageHeading'
 import HighlightsView from './HighlightsView'
 import SearchView from './SearchView'
 import BottomNav from './BottomNav'
@@ -51,11 +52,11 @@ export default function AppShell() {
   const [showTagline, setShowTagline] = useState(true)
 
   const allTagNames = availableTags.map((t) => t.tag)
-  // Shown next to the wordmark, matching the mockup's "18 saved". Only known
-  // and accurate for the unfiltered queue — there is no single-call global
-  // count, so it's hidden everywhere else rather than guessed.
-  const itemCount =
-    view === 'queue' && queueStatus === 'queued' && !tagFilter ? items.length : null
+  // Shown next to the wordmark, matching the mockup's "18 saved". Only the
+  // Saved screen uses this — Highlights/Search/Favorites show their own count
+  // under their own page title instead ("Grifo" isn't their title there).
+  const itemCount = view === 'queue' ? items.length : null
+  const itemCountLabel = queueStatus === 'read' ? 'read' : 'saved'
 
   // The api.TagScope matching the currently visible tag filter bar, or null
   // where there isn't one (Search has its own category filter, no tags).
@@ -330,7 +331,7 @@ export default function AppShell() {
         <h1 className="text-lg font-bold tracking-[-.02em] text-paper-50">Grifo</h1>
         {itemCount !== null && (
           <span className="ml-auto text-[11.5px] font-medium text-paper-500">
-            {itemCount} saved
+            {itemCount} {itemCountLabel}
           </span>
         )}
       </header>
@@ -339,7 +340,7 @@ export default function AppShell() {
       )}
 
       {/* Desktop top tabs. Mobile uses the fixed bottom nav instead. */}
-      <nav className="mb-1 mt-4 hidden gap-1 rounded-full bg-white/[0.04] p-1 shadow-gel-track sm:flex">
+      <nav className="mb-1 mt-4 hidden w-max gap-1 rounded-full bg-white/[0.04] p-1 shadow-gel-track sm:flex">
         <TabButton active={view === 'queue'} onClick={() => changeView('queue')}>
           Saved
         </TabButton>
@@ -378,23 +379,37 @@ export default function AppShell() {
         </div>
       )}
 
-      {view === 'highlights' && scopedTagCounts.length > 0 && (
-        <div className="mt-3">
-          <TagFilterBar
-            tags={scopedTagCounts}
-            active={highlightsTag}
-            onSelect={setHighlightsTag}
+      {view === 'highlights' && (
+        <div className="mt-4">
+          <PageHeading
+            title="Highlights"
+            count={allHighlights.length}
+            label={allHighlights.length === 1 ? 'passage kept' : 'passages kept'}
           />
+          {scopedTagCounts.length > 0 && (
+            <div className="mt-3.5">
+              <TagFilterBar
+                tags={scopedTagCounts}
+                active={highlightsTag}
+                onSelect={setHighlightsTag}
+              />
+            </div>
+          )}
         </div>
       )}
 
-      {view === 'favorites' && scopedTagCounts.length > 0 && (
-        <div className="mt-3">
-          <TagFilterBar
-            tags={scopedTagCounts}
-            active={favoritesTag}
-            onSelect={setFavoritesTag}
-          />
+      {view === 'favorites' && (
+        <div className="mt-4">
+          <PageHeading title="Favorites" count={favorites.length} label="saved" />
+          {scopedTagCounts.length > 0 && (
+            <div className="mt-3.5">
+              <TagFilterBar
+                tags={scopedTagCounts}
+                active={favoritesTag}
+                onSelect={setFavoritesTag}
+              />
+            </div>
+          )}
         </div>
       )}
 

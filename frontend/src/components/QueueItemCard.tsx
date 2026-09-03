@@ -3,11 +3,11 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Item } from '../types'
 import { readingTime, formatDate, itemSourceLabel } from '../format'
-import TagEditor from './TagEditor'
 import ItemHeading from './ItemHeading'
 import ItemThumbnail from './ItemThumbnail'
 import FavoriteButton from './FavoriteButton'
 import OverflowMenu, { MenuRow } from './OverflowMenu'
+import TagSheet from './TagSheet'
 
 type Props = {
   item: Item
@@ -32,6 +32,7 @@ export default function QueueItemCard({
   allTags,
 }: Props) {
   const [renaming, setRenaming] = useState(false)
+  const [taggingOpen, setTaggingOpen] = useState(false)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
 
@@ -104,16 +105,14 @@ export default function QueueItemCard({
                 >
                   Edit title
                 </MenuRow>
-                <div className="mt-1 border-t border-white/[0.06] px-2.5 py-1.5">
-                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-paper-700">
-                    Add tag
-                  </p>
-                  <TagEditor
-                    tags={item.tags}
-                    suggestions={allTags}
-                    onSave={(tags) => onSetTags(item.id, tags)}
-                  />
-                </div>
+                <MenuRow
+                  onClick={() => {
+                    setTaggingOpen(true)
+                    close()
+                  }}
+                >
+                  Add tag
+                </MenuRow>
                 <div className="mt-1 border-t border-white/[0.06] pt-1">
                   <MenuRow
                     danger
@@ -130,6 +129,15 @@ export default function QueueItemCard({
           </OverflowMenu>
         </div>
       </div>
+
+      {taggingOpen && (
+        <TagSheet
+          tags={item.tags}
+          suggestions={allTags}
+          onSave={(tags) => onSetTags(item.id, tags)}
+          onClose={() => setTaggingOpen(false)}
+        />
+      )}
     </div>
   )
 }

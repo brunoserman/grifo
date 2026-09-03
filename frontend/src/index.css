@@ -16,6 +16,13 @@ body {
   overflow-x: hidden;
 }
 
+/* Hide the browser's own clear button on <input type="search"> — the search
+   view draws its own, styled to match the dark gel field. */
+input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 /* A horizontally scrollable strip with no visible scrollbar (the nav tabs). */
 .no-scrollbar {
   -ms-overflow-style: none;

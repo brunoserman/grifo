@@ -133,7 +133,8 @@ export const listAllHighlights = (tag?: string | null) => {
 
 export type SearchScope = 'all' | 'queue' | 'read' | 'highlights'
 
-export const search = (q: string, scope: SearchScope = 'all') =>
-  request<{ results: SearchResult[] }>(
-    `/api/search?q=${encodeURIComponent(q)}&scope=${scope}`
-  )
+export const search = (q: string, scope: SearchScope = 'all', tag?: string | null) => {
+  const params = new URLSearchParams({ q, scope })
+  if (tag) params.set('tag', tag)
+  return request<{ results: SearchResult[] }>(`/api/search?${params.toString()}`)
+}

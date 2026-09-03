@@ -115,14 +115,14 @@ export default function AddItemBar({ onAdded, onError }: Props) {
             onChange={(e) => setNoteTitle(e.target.value)}
             placeholder="Note title"
             autoFocus
-            className="w-full rounded-[10px] bg-gel-field px-3 py-2 text-sm font-medium text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
+            className="w-full rounded-[10px] bg-ink-800 bg-gel-field px-3 py-2 text-sm font-medium text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
           />
           <textarea
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             placeholder="Write your note…"
             rows={4}
-            className="w-full rounded-[10px] bg-gel-field px-3 py-2 text-sm text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
+            className="w-full rounded-[10px] bg-ink-800 bg-gel-field px-3 py-2 text-sm text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
           />
           <div className="flex justify-end gap-2">
             <button

@@ -588,13 +588,16 @@ items.post('/reindex', async (c) => {
   })
 })
 
-// POST /api/backfill-thumbnails
+// GET/POST /api/backfill-thumbnails
 // One-off: fills thumbnail_url for link items saved before that column
 // existed. Re-fetches each one's source_url and re-extracts (same og:image /
 // twitter:image / YouTube-oEmbed logic as save time). Only touches items
 // where thumbnail_url is still null, so it's safe to run more than once —
 // e.g. to pick up items that failed the first time (a dead link, a timeout).
-items.post('/backfill-thumbnails', async (c) => {
+// Answers GET too (not just POST) so it can be triggered by just visiting
+// the URL in a browser tab — this sits behind Cloudflare Access already, and
+// it's a one-off maintenance action, not a routine one worth a UI button for.
+items.on(['GET', 'POST'], '/backfill-thumbnails', async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT id, source_url FROM items
      WHERE type = 'link' AND thumbnail_url IS NULL AND source_url IS NOT NULL`

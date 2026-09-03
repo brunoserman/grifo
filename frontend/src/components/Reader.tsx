@@ -5,7 +5,7 @@ import * as api from '../api'
 import { captureSelection, paintHighlights, type CapturedSelection } from '../highlight'
 import FavoriteButton from './FavoriteButton'
 import OverflowMenu, { MenuRow } from './OverflowMenu'
-import TagEditor from './TagEditor'
+import TagSheet from './TagSheet'
 
 type Props = {
   item: Item
@@ -46,6 +46,7 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
 
   // Title rename, from the overflow menu (any item type).
   const [renamingTitle, setRenamingTitle] = useState(false)
+  const [taggingOpen, setTaggingOpen] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
 
   const [allTags, setAllTags] = useState<string[]>([])
@@ -283,12 +284,14 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
       >
         Edit title
       </MenuRow>
-      <div className="mt-1 border-t border-white/[0.06] px-2.5 py-1.5">
-        <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-paper-700">
-          Add tag
-        </p>
-        <TagEditor tags={item.tags} suggestions={allTags} onSave={saveTags} />
-      </div>
+      <MenuRow
+        onClick={() => {
+          setTaggingOpen(true)
+          close()
+        }}
+      >
+        Add tag
+      </MenuRow>
       <div className="mt-1 border-t border-white/[0.06] pt-1">
         <MenuRow
           danger
@@ -393,14 +396,14 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               placeholder="Note title"
-              className="w-full rounded-[10px] bg-gel-field px-3 py-2 text-lg font-medium text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
+              className="w-full rounded-[10px] bg-ink-800 bg-gel-field px-3 py-2 text-lg font-medium text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
             />
             <textarea
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
               placeholder="Write your note…"
               rows={14}
-              className="mt-3 w-full rounded-[10px] bg-gel-field px-3 py-2 text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
+              className="mt-3 w-full rounded-[10px] bg-ink-800 bg-gel-field px-3 py-2 text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
             />
             <div className="mt-3 flex justify-end gap-2">
               <button
@@ -516,6 +519,15 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
           </button>
         </div>
       )}
+
+      {taggingOpen && (
+        <TagSheet
+          tags={item.tags}
+          suggestions={allTags}
+          onSave={saveTags}
+          onClose={() => setTaggingOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -572,7 +584,7 @@ function TitleField({
             onCancel()
           }
         }}
-        className="w-full rounded-[10px] bg-gel-field px-3 py-2 text-2xl font-bold text-paper-50 shadow-gel-field outline-none"
+        className="w-full rounded-[10px] bg-ink-800 bg-gel-field px-3 py-2 text-2xl font-bold text-paper-50 shadow-gel-field outline-none"
       />
       <div className="flex gap-2">
         <button
