@@ -22,14 +22,26 @@ export type Extracted = {
   thumbnail_url: string | null
 }
 
+// Present as a normal browser. A self-identifying bot user-agent (our old
+// "GrifoBot/1.0") gets 403'd or rate-limited by many hosts — Substack and other
+// Cloudflare-fronted sites among them — which surfaced to the owner as a bare
+// "fetch error" when saving perfectly good articles.
+const BROWSER_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
+
+// A body this long or longer means the page is a real article, not a video
+// wrapper. Real articles run to hundreds of words; a wrapper page's caption is
+// a handful. Below this, a YouTube video the page points at is likely its point.
+const ARTICLE_MIN_WORDS = 200
+
 // Fetch a URL and pull the clean article out of it. Throws on any failure; the
 // caller is responsible for saving the item anyway with extraction='failed'.
 export async function extractFromUrl(url: string): Promise<Extracted> {
   const res = await fetch(url, {
     headers: {
-      'user-agent':
-        'Mozilla/5.0 (compatible; GrifoBot/1.0; +https://github.com/) read-later',
-      accept: 'text/html,application/xhtml+xml',
+      'user-agent': BROWSER_UA,
+      accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'accept-language': 'en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7',
     },
     redirect: 'follow',
   })
@@ -47,11 +59,41 @@ export async function extractFromUrl(url: string): Promise<Extracted> {
     document
       .querySelector('meta[property="og:site_name"]')
       ?.getAttribute('content') || hostnameOf(finalUrl)
+  const thumbnailUrl = thumbnailFromMeta(document, finalUrl)
 
-  // A link shared from LinkedIn (or another wrapper) is often really a YouTube
-  // video. If the fetched page isn't YouTube itself but points at a YouTube
-  // video, resolve the real title via YouTube's public oEmbed and label it
-  // YouTube, so the card shows the video — not "LinkedIn" with a raw URL.
+  // Parse the article FIRST. An article that merely embeds a YouTube video in
+  // its body (Substack posts, most blogs) must never be replaced by that video:
+  // the article is what the reader saved. linkedom's document is structurally
+  // compatible with what Readability reads, but not with the DOM Document type,
+  // which isn't available in the Worker, so we cast.
+  const article = new Readability(document as any).parse()
+  const contentText = article
+    ? (article.textContent ?? '').replace(/\s+/g, ' ').trim()
+    : ''
+  const wordCount = contentText ? contentText.split(' ').length : 0
+
+  const articleResult = (): Extracted => ({
+    title: article!.title || titleFromMeta(document) || null,
+    author: article!.byline || null,
+    site_name: article!.siteName || siteFromMeta || null,
+    excerpt: article!.excerpt || null,
+    content_html: article!.content || null,
+    content_text: contentText || null,
+    word_count: wordCount || null,
+    resolved_url: null,
+    thumbnail_url: thumbnailUrl,
+  })
+
+  // A substantial article body always wins, even if it embeds a video.
+  if (article?.content && wordCount >= ARTICLE_MIN_WORDS) {
+    return articleResult()
+  }
+
+  // No real article. A link shared from LinkedIn (or another wrapper) is often
+  // really a YouTube video. If the fetched page isn't YouTube itself but points
+  // at a YouTube video, resolve the real title via YouTube's public oEmbed and
+  // label it YouTube, so the card shows the video — not "LinkedIn" with a raw
+  // URL. This runs only now, after ruling out a real article above.
   if (!isYouTubeHost(finalUrl)) {
     const ytUrl = findYouTubeUrl(document, html)
     if (ytUrl) {
@@ -72,43 +114,24 @@ export async function extractFromUrl(url: string): Promise<Extracted> {
     }
   }
 
-  const thumbnailUrl = thumbnailFromMeta(document, finalUrl)
-
-  // linkedom's document is structurally compatible with what Readability reads,
-  // but not with the DOM Document type, which isn't available in the Worker.
-  const article = new Readability(document as any).parse()
-
-  // Pages like LinkedIn posts or YouTube videos have no extractable article
-  // body. Rather than losing everything, still return the page title (and site)
-  // so the item is identifiable in the queue. content_html stays null, which is
-  // what the caller reads to mark extraction as 'failed' and open the original.
-  if (!article) {
-    return {
-      title: titleFromMeta(document) || null,
-      author: null,
-      site_name: siteFromMeta || null,
-      excerpt: null,
-      content_html: null,
-      content_text: null,
-      word_count: null,
-      resolved_url: null,
-      thumbnail_url: thumbnailUrl,
-    }
+  // A thin-but-present article body still beats nothing.
+  if (article?.content) {
+    return articleResult()
   }
 
-  const contentText = (article.textContent ?? '').replace(/\s+/g, ' ').trim()
-  const wordCount = contentText ? contentText.split(' ').length : 0
-
-  const siteName = article.siteName || siteFromMeta
-
+  // Pages like LinkedIn posts or bare SPAs have no extractable article body and
+  // no video to resolve. Rather than losing everything, still return the page
+  // title (and site) so the item is identifiable in the queue. content_html
+  // stays null, which is what the caller reads to mark extraction 'failed' and
+  // open the original.
   return {
-    title: article.title || titleFromMeta(document) || null,
-    author: article.byline || null,
-    site_name: siteName || null,
-    excerpt: article.excerpt || null,
-    content_html: article.content || null,
-    content_text: contentText || null,
-    word_count: wordCount || null,
+    title: titleFromMeta(document) || null,
+    author: null,
+    site_name: siteFromMeta || null,
+    excerpt: null,
+    content_html: null,
+    content_text: null,
+    word_count: null,
     resolved_url: null,
     thumbnail_url: thumbnailUrl,
   }
