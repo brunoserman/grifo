@@ -588,6 +588,37 @@ items.post('/reindex', async (c) => {
   })
 })
 
+// POST /api/backfill-thumbnails
+// One-off: fills thumbnail_url for link items saved before that column
+// existed. Re-fetches each one's source_url and re-extracts (same og:image /
+// twitter:image / YouTube-oEmbed logic as save time). Only touches items
+// where thumbnail_url is still null, so it's safe to run more than once —
+// e.g. to pick up items that failed the first time (a dead link, a timeout).
+items.post('/backfill-thumbnails', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, source_url FROM items
+     WHERE type = 'link' AND thumbnail_url IS NULL AND source_url IS NOT NULL`
+  ).all<{ id: string; source_url: string }>()
+
+  let updated = 0
+  let failed = 0
+  for (const row of results) {
+    try {
+      const extracted = await extractFromUrl(row.source_url)
+      if (extracted.thumbnail_url) {
+        await c.env.DB.prepare('UPDATE items SET thumbnail_url = ? WHERE id = ?')
+          .bind(extracted.thumbnail_url, row.id)
+          .run()
+        updated++
+      }
+    } catch {
+      failed++
+    }
+  }
+
+  return c.json({ ok: true, scanned: results.length, updated, failed })
+})
+
 // Turn a plain-text note into simple HTML: paragraphs on blank lines, line
 // breaks otherwise. Everything is escaped first so the note can never inject
 // markup.
