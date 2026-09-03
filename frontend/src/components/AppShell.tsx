@@ -35,7 +35,13 @@ export default function AppShell() {
   const [items, setItems] = useState<Item[]>([])
   const [favorites, setFavorites] = useState<Item[]>([])
   const [allHighlights, setAllHighlights] = useState<HighlightWithItem[]>([])
+  // Unscoped, system-wide tag list — used only for the tag-editor's
+  // autocomplete, where any tag anywhere is a valid suggestion.
   const [availableTags, setAvailableTags] = useState<TagCount[]>([])
+  // Counts for whichever tag filter bar is currently showing, scoped to that
+  // screen (and, for Saved, to the Saved/Read segment) so a count matches
+  // what selecting that tag would actually show there.
+  const [scopedTagCounts, setScopedTagCounts] = useState<TagCount[]>([])
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [highlightsTag, setHighlightsTag] = useState<string | null>(null)
   const [favoritesTag, setFavoritesTag] = useState<string | null>(null)
@@ -45,14 +51,45 @@ export default function AppShell() {
   const [showTagline, setShowTagline] = useState(true)
 
   const allTagNames = availableTags.map((t) => t.tag)
+  // Shown next to the wordmark, matching the mockup's "18 saved". Only known
+  // and accurate for the unfiltered queue — there is no single-call global
+  // count, so it's hidden everywhere else rather than guessed.
+  const itemCount =
+    view === 'queue' && queueStatus === 'queued' && !tagFilter ? items.length : null
 
-  const refreshTags = () =>
+  // The api.TagScope matching the currently visible tag filter bar, or null
+  // where there isn't one (Search has its own category filter, no tags).
+  function currentTagScope(): api.TagScope | null {
+    if (view === 'queue') return queueStatus
+    if (view === 'highlights') return 'highlights'
+    if (view === 'favorites') return 'favorite'
+    return null
+  }
+
+  const refreshScopedTags = () => {
+    const scope = currentTagScope()
+    if (!scope) {
+      setScopedTagCounts([])
+      return
+    }
+    api.listTags(scope).then(setScopedTagCounts).catch(() => {})
+  }
+
+  const refreshTags = () => {
     api.listTags().then(setAvailableTags).catch(() => {})
+    refreshScopedTags()
+  }
 
-  // Keep the tag list (for the filter bar) loaded on mount.
+  // Keep the system-wide tag list (for autocomplete) loaded on mount.
   useEffect(() => {
     refreshTags()
   }, [])
+
+  // Re-scope the filter bar's counts whenever the screen (or, on Saved, the
+  // Saved/Read segment) changes.
+  useEffect(() => {
+    refreshScopedTags()
+  }, [view, queueStatus])
 
   // Load the active view on mount and when it changes, showing the spinner. The
   // queue reloads when its status (queued/read) or tag filter changes too.
@@ -144,6 +181,9 @@ export default function AppShell() {
     setItems((prev) => prev.filter((i) => i.id !== id))
     try {
       await api.markRead(id)
+      // The item just moved between the Saved/Read segments, which changes
+      // both segments' tag counts.
+      refreshScopedTags()
     } catch (e) {
       setItems(previous)
       setError(e instanceof Error ? e.message : 'Could not mark as read')
@@ -155,6 +195,7 @@ export default function AppShell() {
     setItems((prev) => prev.filter((i) => i.id !== id))
     try {
       await api.returnToQueue(id)
+      refreshScopedTags()
     } catch (e) {
       setItems(previous)
       setError(e instanceof Error ? e.message : 'Could not return to queue')
@@ -243,6 +284,7 @@ export default function AppShell() {
     )
     try {
       await api.setFavorite(item.id, next === 1)
+      if (view === 'favorites') refreshScopedTags()
     } catch (e) {
       // Revert on failure by reloading whichever list is showing.
       setError(e instanceof Error ? e.message : 'Could not update favorite')
@@ -277,24 +319,29 @@ export default function AppShell() {
 
   return (
     <div className="mx-auto min-h-screen max-w-2xl overflow-x-hidden px-4 pb-bottom-nav pt-5 sm:pt-8">
-      <header className="flex items-center gap-2">
+      <header className="flex items-center gap-2.5">
         <img
           src="/icon-192.png"
           alt="Grifo"
-          width={28}
-          height={28}
-          className="h-7 w-7 shrink-0 rounded"
+          width={26}
+          height={26}
+          className="h-[26px] w-[26px] shrink-0 rounded-[9px] shadow-[0_2px_8px_rgba(0,0,0,.4)]"
         />
-        <h1 className="text-lg font-semibold tracking-tight">Grifo</h1>
+        <h1 className="text-lg font-bold tracking-[-.02em] text-paper-50">Grifo</h1>
+        {itemCount !== null && (
+          <span className="ml-auto text-[11.5px] font-medium text-paper-500">
+            {itemCount} saved
+          </span>
+        )}
       </header>
       {showTagline && (
-        <p className="mt-1 text-sm text-neutral-500">Read it, keep what matters.</p>
+        <p className="mt-1 text-sm text-paper-500">Read it, keep what matters.</p>
       )}
 
       {/* Desktop top tabs. Mobile uses the fixed bottom nav instead. */}
-      <nav className="mb-1 mt-4 hidden gap-1 border-b border-neutral-200 sm:flex">
+      <nav className="mb-1 mt-4 hidden gap-1 rounded-full bg-white/[0.04] p-1 shadow-gel-track sm:flex">
         <TabButton active={view === 'queue'} onClick={() => changeView('queue')}>
-          Queue
+          Saved
         </TabButton>
         <TabButton active={view === 'highlights'} onClick={() => changeView('highlights')}>
           Highlights
@@ -311,12 +358,12 @@ export default function AppShell() {
       {view === 'queue' && (
         <div className="mt-4 space-y-3">
           <AddItemBar onAdded={handleAdded} onError={setError} />
-          <div className="flex gap-1">
+          <div className="flex gap-1.5 rounded-full bg-white/[0.04] p-1 shadow-gel-track">
             <SegButton
               active={queueStatus === 'queued'}
               onClick={() => setQueueStatus('queued')}
             >
-              Queue
+              Saved
             </SegButton>
             <SegButton
               active={queueStatus === 'read'}
@@ -325,26 +372,26 @@ export default function AppShell() {
               Read
             </SegButton>
           </div>
-          {availableTags.length > 0 && (
-            <TagFilterBar tags={availableTags} active={tagFilter} onSelect={setTagFilter} />
+          {scopedTagCounts.length > 0 && (
+            <TagFilterBar tags={scopedTagCounts} active={tagFilter} onSelect={setTagFilter} />
           )}
         </div>
       )}
 
-      {view === 'highlights' && availableTags.length > 0 && (
+      {view === 'highlights' && scopedTagCounts.length > 0 && (
         <div className="mt-3">
           <TagFilterBar
-            tags={availableTags}
+            tags={scopedTagCounts}
             active={highlightsTag}
             onSelect={setHighlightsTag}
           />
         </div>
       )}
 
-      {view === 'favorites' && availableTags.length > 0 && (
+      {view === 'favorites' && scopedTagCounts.length > 0 && (
         <div className="mt-3">
           <TagFilterBar
-            tags={availableTags}
+            tags={scopedTagCounts}
             active={favoritesTag}
             onSelect={setFavoritesTag}
           />
@@ -352,7 +399,7 @@ export default function AppShell() {
       )}
 
       {error && (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <div className="mt-4 rounded-gel-sm bg-red-500/10 px-4 py-2 text-sm text-red-400 shadow-gel-sm">
           {error}
         </div>
       )}
@@ -361,7 +408,7 @@ export default function AppShell() {
         {view === 'search' ? (
           <SearchView onOpenSource={openSource} />
         ) : loading ? (
-          <p className="text-sm text-neutral-400">Loading…</p>
+          <p className="text-sm text-paper-600">Loading…</p>
         ) : view === 'highlights' ? (
           <HighlightsView
             highlights={allHighlights}
@@ -425,10 +472,10 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={
-        'shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ' +
+        'shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium ' +
         (active
-          ? 'border-neutral-900 text-neutral-900'
-          : 'border-transparent text-neutral-500 hover:text-neutral-800')
+          ? 'bg-gel-active text-paper-50 shadow-gel-pill'
+          : 'text-paper-500 hover:text-paper-300')
       }
     >
       {children}
@@ -452,10 +499,8 @@ function SegButton({
       onClick={onClick}
       aria-pressed={active}
       className={
-        'rounded-full border px-3 py-1 text-sm font-medium ' +
-        (active
-          ? 'border-neutral-900 bg-neutral-900 text-white'
-          : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100')
+        'flex-1 rounded-full px-3 py-1.5 text-[12.5px] font-semibold ' +
+        (active ? 'bg-gel-active text-paper-50 shadow-gel-pill' : 'text-paper-500')
       }
     >
       {children}
@@ -471,7 +516,7 @@ function EmptyState({
   filtered?: boolean
 }) {
   return (
-    <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
+    <p className="rounded-gel bg-white/[0.03] px-4 py-10 text-center text-sm text-paper-600 shadow-gel-sm">
       {filtered
         ? 'No items with this tag. Pick another tag or “All”.'
         : queueStatus === 'read'

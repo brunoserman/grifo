@@ -55,12 +55,12 @@ export default function ReaderRoute() {
 
   if (error) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-white p-6 text-center">
-        <p className="text-sm text-red-700">{error}</p>
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-ink-900 p-6 text-center">
+        <p className="text-sm text-red-400">{error}</p>
         <button
           type="button"
           onClick={() => navigate('/')}
-          className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm hover:bg-neutral-100"
+          className="rounded-md bg-white/5 px-3 py-1.5 text-sm text-paper-300 shadow-gel-sm hover:bg-white/10"
         >
           Back to the list
         </button>
@@ -71,7 +71,7 @@ export default function ReaderRoute() {
   // Guard against showing a previously-read item while the new one loads.
   if (!item || item.id !== id) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white text-sm text-neutral-400">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900 text-sm text-paper-600">
         Loading…
       </div>
     )

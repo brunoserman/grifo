@@ -12,6 +12,7 @@ export type Item = {
   word_count: number | null
   r2_key: string | null
   file_size: number | null
+  thumbnail_url: string | null
   folder_id: string | null
   status: 'queued' | 'read'
   favorite: number

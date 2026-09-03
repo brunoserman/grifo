@@ -5,36 +5,43 @@ type Props = {
   onChange: (view: NavView) => void
 }
 
-// Fixed bottom navigation for mobile (hidden on desktop, which keeps its top
-// tabs). Icon + label per item. Sits above the content and clears the device's
-// bottom safe area (see .bottom-nav in index.css).
+// Floating bottom navigation for mobile (hidden on desktop, which keeps its
+// top tabs). The active item's icon sits in a lit yellow pill; the label
+// stays plain text — only the icon carries the accent, per the design.
 export default function BottomNav({ active, onChange }: Props) {
   return (
-    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white sm:hidden">
-      <div className="mx-auto flex max-w-2xl">
-        {ITEMS.map(({ view, label, icon }) => (
-          <button
-            key={view}
-            type="button"
-            onClick={() => onChange(view)}
-            aria-current={active === view ? 'page' : undefined}
-            className={
-              'flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ' +
-              (active === view ? 'text-neutral-900' : 'text-neutral-400')
-            }
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
+    <nav className="bottom-nav fixed inset-x-3 bottom-3.5 z-40 rounded-[24px] bg-ink-800 bg-gel-surface-strong p-1.5 shadow-gel sm:hidden">
+      <div className="mx-auto flex max-w-2xl gap-1">
+        {ITEMS.map(({ view, label, icon }) => {
+          const isActive = active === view
+          return (
+            <button
+              key={view}
+              type="button"
+              onClick={() => onChange(view)}
+              aria-current={isActive ? 'page' : undefined}
+              className="flex flex-1 flex-col items-center gap-1 py-1 text-[10.5px] font-semibold"
+            >
+              <span
+                className={
+                  'flex h-7 w-10 items-center justify-center rounded-full ' +
+                  (isActive ? 'bg-gel-accent text-accent-ink shadow-gel-accent' : 'text-paper-500')
+                }
+              >
+                {icon}
+              </span>
+              <span className={isActive ? 'text-paper-50' : 'text-paper-500'}>{label}</span>
+            </button>
+          )
+        })}
       </div>
     </nav>
   )
 }
 
 const iconProps = {
-  width: 22,
-  height: 22,
+  width: 19,
+  height: 19,
   viewBox: '0 0 24 24',
   fill: 'none',
   stroke: 'currentColor',
@@ -46,7 +53,7 @@ const iconProps = {
 const ITEMS: { view: NavView; label: string; icon: JSX.Element }[] = [
   {
     view: 'queue',
-    label: 'Queue',
+    label: 'Saved',
     icon: (
       <svg {...iconProps}>
         <line x1="8" y1="6" x2="21" y2="6" />

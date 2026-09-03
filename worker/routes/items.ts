@@ -107,8 +107,8 @@ async function saveLink(c: Ctx, url?: string) {
   const insert = c.env.DB.prepare(
     `INSERT INTO items
        (id, type, title, source_url, author, site_name, excerpt,
-        content_html, content_text, word_count, position, extraction, extraction_error)
-     VALUES (?, 'link', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        content_html, content_text, word_count, thumbnail_url, position, extraction, extraction_error)
+     VALUES (?, 'link', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     id,
     title,
@@ -119,6 +119,7 @@ async function saveLink(c: Ctx, url?: string) {
     extracted?.content_html ?? null,
     extracted?.content_text ?? null,
     extracted?.word_count ?? null,
+    extracted?.thumbnail_url ?? null,
     newPosition(),
     extraction,
     extractionError
@@ -314,9 +315,56 @@ items.get('/items', async (c) => {
   return c.json(results.map(rowToItem))
 })
 
-// GET /api/tags
-// Every distinct tag in use with how many items carry it, for the filter UI.
+// GET /api/tags?scope=...
+// Every distinct tag in use with how many items carry it. With no scope, this
+// is every item everywhere — used for tag-editor autocomplete, where any tag
+// in the system is a valid suggestion. A scope narrows the count to match
+// what a given screen's tag filter would actually show there:
+//   queued | read  -> items with that status
+//   favorite       -> favorited items
+//   highlights     -> highlights whose source item carries the tag (counts
+//                     highlights, matching what GET /api/highlights?tag=
+//                     returns, not items)
 items.get('/tags', async (c) => {
+  const scope = c.req.query('scope')
+
+  if (scope === 'queued' || scope === 'read') {
+    const { results } = await c.env.DB.prepare(
+      `SELECT it.tag AS tag, COUNT(*) AS count
+       FROM item_tags it
+       JOIN items i ON i.id = it.item_id
+       WHERE i.status = ?
+       GROUP BY it.tag
+       ORDER BY it.tag COLLATE NOCASE`
+    )
+      .bind(scope)
+      .all<{ tag: string; count: number }>()
+    return c.json(results)
+  }
+
+  if (scope === 'favorite') {
+    const { results } = await c.env.DB.prepare(
+      `SELECT it.tag AS tag, COUNT(*) AS count
+       FROM item_tags it
+       JOIN items i ON i.id = it.item_id
+       WHERE i.favorite = 1
+       GROUP BY it.tag
+       ORDER BY it.tag COLLATE NOCASE`
+    ).all<{ tag: string; count: number }>()
+    return c.json(results)
+  }
+
+  if (scope === 'highlights') {
+    const { results } = await c.env.DB.prepare(
+      `SELECT it.tag AS tag, COUNT(*) AS count
+       FROM item_tags it
+       JOIN highlights h ON h.item_id = it.item_id
+       GROUP BY it.tag
+       ORDER BY it.tag COLLATE NOCASE`
+    ).all<{ tag: string; count: number }>()
+    return c.json(results)
+  }
+
   const { results } = await c.env.DB.prepare(
     `SELECT tag, COUNT(*) AS count
      FROM item_tags
@@ -538,6 +586,37 @@ items.post('/reindex', async (c) => {
     items: itemsCount?.n ?? 0,
     highlights: highlightsCount?.n ?? 0,
   })
+})
+
+// POST /api/backfill-thumbnails
+// One-off: fills thumbnail_url for link items saved before that column
+// existed. Re-fetches each one's source_url and re-extracts (same og:image /
+// twitter:image / YouTube-oEmbed logic as save time). Only touches items
+// where thumbnail_url is still null, so it's safe to run more than once —
+// e.g. to pick up items that failed the first time (a dead link, a timeout).
+items.post('/backfill-thumbnails', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, source_url FROM items
+     WHERE type = 'link' AND thumbnail_url IS NULL AND source_url IS NOT NULL`
+  ).all<{ id: string; source_url: string }>()
+
+  let updated = 0
+  let failed = 0
+  for (const row of results) {
+    try {
+      const extracted = await extractFromUrl(row.source_url)
+      if (extracted.thumbnail_url) {
+        await c.env.DB.prepare('UPDATE items SET thumbnail_url = ? WHERE id = ?')
+          .bind(extracted.thumbnail_url, row.id)
+          .run()
+        updated++
+      }
+    } catch {
+      failed++
+    }
+  }
+
+  return c.json({ ok: true, scanned: results.length, updated, failed })
 })
 
 // Turn a plain-text note into simple HTML: paragraphs on blank lines, line

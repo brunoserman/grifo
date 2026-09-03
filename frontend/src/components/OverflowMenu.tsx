@@ -35,18 +35,18 @@ export default function OverflowMenu({ children, className }: Props) {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md border border-neutral-200 px-2 py-1 text-neutral-500 hover:bg-neutral-100"
+        className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white/5 text-paper-400 shadow-gel-sm hover:bg-white/10"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="5" cy="12" r="1.6" />
-          <circle cx="12" cy="12" r="1.6" />
-          <circle cx="19" cy="12" r="1.6" />
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="12" r="1.7" />
+          <circle cx="12" cy="12" r="1.7" />
+          <circle cx="19" cy="12" r="1.7" />
         </svg>
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-1 w-60 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-60 rounded-gel-sm bg-ink-800 bg-gel-surface-strong p-1.5 shadow-gel"
         >
           {children(() => setOpen(false))}
         </div>
@@ -71,10 +71,8 @@ export function MenuRow({
       role="menuitem"
       onClick={onClick}
       className={
-        'block w-full rounded px-2.5 py-1.5 text-left text-sm ' +
-        (danger
-          ? 'text-red-600 hover:bg-red-50'
-          : 'text-neutral-700 hover:bg-neutral-100')
+        'block w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] font-medium ' +
+        (danger ? 'text-red-400 hover:bg-red-500/10' : 'text-paper-300 hover:bg-white/[0.06]')
       }
     >
       {children}

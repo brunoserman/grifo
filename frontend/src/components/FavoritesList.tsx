@@ -42,6 +42,7 @@ export default function FavoritesList({
           readingTime(item),
           item.status === 'read' ? 'read' : 'in queue',
           formatDate(item.saved_at),
+          ...item.tags,
         ]
           .filter(Boolean)
           .join(' · ')

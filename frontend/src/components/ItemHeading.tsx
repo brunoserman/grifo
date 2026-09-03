@@ -37,15 +37,18 @@ export default function ItemHeading({
     <div className="min-w-0">
       <button
         type="button"
-        onClick={() => onOpen(item)}
-        className="w-full text-left font-medium text-neutral-900 line-clamp-2 hover:underline"
+        onClick={(e) => {
+          e.stopPropagation()
+          onOpen(item)
+        }}
+        className="line-clamp-2 w-full text-left text-[14.5px] font-semibold leading-snug tracking-[-.012em] text-paper-50 hover:underline"
       >
         {itemTitle(item)}
       </button>
       {isFallbackUrlTitle(item) && (
-        <p className="truncate text-xs text-neutral-400">{item.source_url}</p>
+        <p className="truncate text-[11px] font-medium text-paper-700">{item.source_url}</p>
       )}
-      {meta && <p className="mt-0.5 text-sm text-neutral-500">{meta}</p>}
+      {meta && <p className="mt-1 text-[11.5px] font-medium text-paper-600">{meta}</p>}
     </div>
   )
 }
@@ -79,21 +82,21 @@ function TitleEditor({
             onCancel()
           }
         }}
-        className="w-full rounded-md border border-neutral-300 px-2 py-1 text-sm font-medium outline-none focus:border-neutral-500"
+        className="w-full rounded-[10px] bg-gel-field px-2.5 py-1.5 text-sm font-medium text-paper-50 shadow-gel-field outline-none"
       />
       <div className="flex gap-2">
         <button
           type="button"
           onClick={save}
           disabled={!value.trim()}
-          className="rounded-md bg-neutral-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-40"
+          className="rounded-md bg-gel-accent px-2.5 py-1 text-xs font-bold text-accent-ink shadow-gel-accent disabled:opacity-40"
         >
           Save
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
+          className="rounded-md bg-white/5 px-2.5 py-1 text-xs text-paper-400 shadow-gel-sm hover:bg-white/10"
         >
           Cancel
         </button>

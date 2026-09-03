@@ -16,6 +16,10 @@ export type Extracted = {
   // is the resolved YouTube watch URL; the caller stores it as the source so
   // "Open" plays the video. Null when there's nothing to resolve.
   resolved_url: string | null
+  // Preview image for the card thumbnail (og:image/twitter:image, or YouTube's
+  // oEmbed thumbnail). Null when the page has none — the card falls back to a
+  // type icon.
+  thumbnail_url: string | null
 }
 
 // Fetch a URL and pull the clean article out of it. Throws on any failure; the
@@ -62,10 +66,13 @@ export async function extractFromUrl(url: string): Promise<Extracted> {
           content_text: null,
           word_count: null,
           resolved_url: ytUrl,
+          thumbnail_url: yt.thumbnail_url,
         }
       }
     }
   }
+
+  const thumbnailUrl = thumbnailFromMeta(document, finalUrl)
 
   // linkedom's document is structurally compatible with what Readability reads,
   // but not with the DOM Document type, which isn't available in the Worker.
@@ -85,6 +92,7 @@ export async function extractFromUrl(url: string): Promise<Extracted> {
       content_text: null,
       word_count: null,
       resolved_url: null,
+      thumbnail_url: thumbnailUrl,
     }
   }
 
@@ -102,6 +110,7 @@ export async function extractFromUrl(url: string): Promise<Extracted> {
     content_text: contentText || null,
     word_count: wordCount || null,
     resolved_url: null,
+    thumbnail_url: thumbnailUrl,
   }
 }
 
@@ -145,19 +154,48 @@ function youtubeId(u: string | null | undefined): string | null {
   return match ? match[1] : null
 }
 
-// YouTube's public oEmbed endpoint returns the real video title and author with
-// no API key. Best effort: any failure just means we fall back to the wrapper.
+// YouTube's public oEmbed endpoint returns the real video title, author and a
+// thumbnail with no API key. Best effort: any failure just means we fall back
+// to the wrapper.
 async function youtubeOEmbed(
   videoUrl: string
-): Promise<{ title: string; author: string | null } | null> {
+): Promise<{ title: string; author: string | null; thumbnail_url: string | null } | null> {
   try {
     const res = await fetch(
       `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(videoUrl)}`
     )
     if (!res.ok) return null
-    const data = (await res.json()) as { title?: string; author_name?: string }
+    const data = (await res.json()) as {
+      title?: string
+      author_name?: string
+      thumbnail_url?: string
+    }
     if (!data.title) return null
-    return { title: data.title, author: data.author_name ?? null }
+    return {
+      title: data.title,
+      author: data.author_name ?? null,
+      thumbnail_url: data.thumbnail_url ?? null,
+    }
+  } catch {
+    return null
+  }
+}
+
+// The page's preview image: og:image, falling back to twitter:image. Resolved
+// against the final (post-redirect) URL so a site-relative path still points
+// at the right image.
+function thumbnailFromMeta(
+  document: {
+    querySelector: (s: string) => { getAttribute: (a: string) => string | null } | null
+  },
+  baseUrl: string
+): string | null {
+  const raw =
+    document.querySelector('meta[property="og:image"]')?.getAttribute('content') ||
+    document.querySelector('meta[name="twitter:image"]')?.getAttribute('content')
+  if (!raw?.trim()) return null
+  try {
+    return new URL(raw.trim(), baseUrl).toString()
   } catch {
     return null
   }

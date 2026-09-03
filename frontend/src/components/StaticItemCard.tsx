@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { Item } from '../types'
 import TagEditor from './TagEditor'
-import TagChips from './TagChips'
 import ItemHeading from './ItemHeading'
+import ItemThumbnail from './ItemThumbnail'
 import OverflowMenu, { MenuRow } from './OverflowMenu'
 
 type Props = {
@@ -37,71 +37,69 @@ export default function StaticItemCard({
   const [renaming, setRenaming] = useState(false)
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
-      <ItemHeading
-        item={item}
-        onOpen={onOpen}
-        meta={meta}
-        editing={renaming}
-        onSubmitTitle={(title) => {
-          onRename(item.id, title)
-          setRenaming(false)
-        }}
-        onCancelEdit={() => setRenaming(false)}
-      />
+    <div
+      onClick={() => onOpen(item)}
+      className="flex cursor-pointer gap-3 rounded-gel bg-gel-surface p-3 shadow-gel"
+    >
+      <ItemThumbnail item={item} />
 
-      <TagChips tags={item.tags} />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <ItemHeading
+          item={item}
+          onOpen={onOpen}
+          meta={meta}
+          editing={renaming}
+          onSubmitTitle={(title) => {
+            onRename(item.id, title)
+            setRenaming(false)
+          }}
+          onCancelEdit={() => setRenaming(false)}
+        />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onOpen(item)}
-          className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
-        >
-          Open
-        </button>
-        {primaryAction && (
-          <button
-            type="button"
-            onClick={primaryAction.onClick}
-            className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
-          >
-            {primaryAction.label}
-          </button>
-        )}
-        <OverflowMenu className="ml-auto">
-          {(close) => (
-            <>
-              <MenuRow
-                onClick={() => {
-                  setRenaming(true)
-                  close()
-                }}
-              >
-                Edit title
-              </MenuRow>
-              <MenuRow
-                onClick={() => {
-                  onToggleFavorite(item)
-                  close()
-                }}
-              >
-                {item.favorite ? 'Remove from favorites' : 'Add to favorites'}
-              </MenuRow>
-              {menuExtra?.(close)}
-              <div className="mt-1 border-t border-neutral-100 px-2.5 py-1.5">
-                <p className="mb-1 text-[11px] uppercase tracking-wide text-neutral-400">
-                  Tags
-                </p>
-                <TagEditor
-                  tags={item.tags}
-                  suggestions={allTags}
-                  onSave={(tags) => onSetTags(item.id, tags)}
-                />
-              </div>
-            </>
+        <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {primaryAction && (
+            <button
+              type="button"
+              onClick={primaryAction.onClick}
+              className="rounded-full bg-gel-surface-strong px-3 py-1.5 text-[11px] font-semibold text-paper-300 shadow-gel-chip"
+            >
+              {primaryAction.label}
+            </button>
           )}
-        </OverflowMenu>
+          <OverflowMenu className="ml-auto">
+            {(close) => (
+              <>
+                <MenuRow
+                  onClick={() => {
+                    setRenaming(true)
+                    close()
+                  }}
+                >
+                  Edit title
+                </MenuRow>
+                <MenuRow
+                  onClick={() => {
+                    onToggleFavorite(item)
+                    close()
+                  }}
+                >
+                  {item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                </MenuRow>
+                {menuExtra?.(close)}
+                <div className="mt-1 border-t border-white/[0.06] px-2.5 py-1.5">
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-paper-700">
+                    Add tag
+                  </p>
+                  <TagEditor
+                    tags={item.tags}
+                    suggestions={allTags}
+                    onSave={(tags) => onSetTags(item.id, tags)}
+                  />
+                </div>
+              </>
+            )}
+          </OverflowMenu>
+        </div>
       </div>
     </div>
   )

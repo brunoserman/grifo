@@ -38,26 +38,26 @@ export default function TagEditor({ tags, onSave, suggestions }: Props) {
 
   const applied = new Set(tags.map((t) => t.toLowerCase()))
   const draftLc = draft.trim().toLowerCase()
-  const matches = draftLc
-    ? suggestions
-        .filter((s) => !applied.has(s.toLowerCase()) && s.toLowerCase().includes(draftLc))
-        .slice(0, 6)
-    : []
+  // Existing tags not yet on this item are offered as suggestions right away
+  // (so you can just tap one), narrowed as you type.
+  const matches = suggestions
+    .filter((s) => !applied.has(s.toLowerCase()) && s.toLowerCase().includes(draftLc))
+    .slice(0, 6)
 
   return (
-    <div className="flex flex-col gap-1" onPointerDown={(e) => e.stopPropagation()}>
+    <div className="flex flex-col gap-1.5" onPointerDown={(e) => e.stopPropagation()}>
       <div className="flex flex-wrap items-center gap-1.5">
         {tags.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-600"
+            className="inline-flex items-center gap-1 rounded-full bg-gel-icon-yellow px-2 py-0.5 text-[11px] font-medium text-accent-400"
           >
             {tag}
             <button
               type="button"
               onClick={() => removeTag(tag)}
               aria-label={`Remove tag ${tag}`}
-              className="text-neutral-400 hover:text-neutral-700"
+              className="text-accent-400/70 hover:text-accent-400"
             >
               ×
             </button>
@@ -69,7 +69,7 @@ export default function TagEditor({ tags, onSave, suggestions }: Props) {
           onKeyDown={onKeyDown}
           onBlur={() => addTag(draft)}
           placeholder="add tag…"
-          className="w-24 min-w-0 rounded border border-transparent px-1 py-0.5 text-xs text-neutral-700 outline-none hover:border-neutral-200 focus:border-neutral-300"
+          className="w-24 min-w-0 rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-paper-300 outline-none placeholder:text-paper-700 focus:bg-white/10"
         />
       </div>
 
@@ -84,7 +84,7 @@ export default function TagEditor({ tags, onSave, suggestions }: Props) {
                 e.preventDefault()
                 addTag(s)
               }}
-              className="rounded border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100"
+              className="rounded-full bg-white/[0.045] px-2 py-0.5 text-[11px] text-paper-400 shadow-gel-sm hover:bg-white/10"
             >
               {s}
             </button>
