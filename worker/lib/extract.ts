@@ -29,6 +29,30 @@ export type Extracted = {
 const BROWSER_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
 
+// A link-preview crawler user-agent, used only for hosts that hide their
+// OpenGraph tags (post title, preview image / logo) behind a login wall for
+// ordinary browsers but still serve them to recognized preview crawlers so
+// their links preview on social platforms. LinkedIn is the case that regressed:
+// switching to BROWSER_UA (above) fixed Substack but made LinkedIn return an
+// authwall with no og:title / og:image, so cards lost their title and logo.
+const CRAWLER_UA =
+  'Mozilla/5.0 (compatible; facebookexternalhit/1.1; +http://www.facebook.com/externalhit_uatext.php)'
+
+// Hosts that need the crawler UA to give up their OpenGraph tags. Kept narrow
+// on purpose: every other host keeps BROWSER_UA, which is what unblocked
+// Substack and friends.
+function userAgentFor(url: string): string {
+  try {
+    const h = new URL(url).hostname
+    if (/(^|\.)linkedin\.com$/i.test(h) || /(^|\.)lnkd\.in$/i.test(h)) {
+      return CRAWLER_UA
+    }
+  } catch {
+    // fall through to the browser UA
+  }
+  return BROWSER_UA
+}
+
 // A body this long or longer means the page is a real article, not a video
 // wrapper. Real articles run to hundreds of words; a wrapper page's caption is
 // a handful. Below this, a YouTube video the page points at is likely its point.
@@ -37,9 +61,34 @@ const ARTICLE_MIN_WORDS = 200
 // Fetch a URL and pull the clean article out of it. Throws on any failure; the
 // caller is responsible for saving the item anyway with extraction='failed'.
 export async function extractFromUrl(url: string): Promise<Extracted> {
+  // A direct YouTube link: resolve its title, author and thumbnail through the
+  // public oEmbed endpoint, which needs no auth or cookies and never depends on
+  // scraping the watch page — that page, fetched from a Worker, is often a
+  // consent or bot wall with no usable og:title / og:image. This is why a saved
+  // video showed a raw URL instead of its title. (A video hidden behind a
+  // *wrapper* page, e.g. a LinkedIn post, is still resolved further below.)
+  if (isYouTubeHost(url)) {
+    const yt = await youtubeOEmbed(url)
+    if (yt?.title) {
+      return {
+        title: yt.title,
+        author: yt.author,
+        site_name: 'YouTube',
+        excerpt: null,
+        content_html: null,
+        content_text: null,
+        word_count: null,
+        resolved_url: null,
+        thumbnail_url: yt.thumbnail_url,
+      }
+    }
+    // oEmbed failed (private/removed video, or a transient error): fall through
+    // to the normal fetch so the item is still saved with whatever we can read.
+  }
+
   const res = await fetch(url, {
     headers: {
-      'user-agent': BROWSER_UA,
+      'user-agent': userAgentFor(url),
       accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'accept-language': 'en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7',
     },
