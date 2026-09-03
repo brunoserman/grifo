@@ -51,11 +51,12 @@ export default function AppShell() {
   const [showTagline, setShowTagline] = useState(true)
 
   const allTagNames = availableTags.map((t) => t.tag)
-  // Shown next to the wordmark, matching the mockup's "18 saved". Only known
-  // and accurate for the unfiltered queue — there is no single-call global
-  // count, so it's hidden everywhere else rather than guessed.
+  // Shown next to the wordmark, matching the mockup's "18 saved" — the size of
+  // whichever list is currently on screen (Highlights/Search have their own
+  // count in their own header instead, so they're left out here).
   const itemCount =
-    view === 'queue' && queueStatus === 'queued' && !tagFilter ? items.length : null
+    view === 'queue' ? items.length : view === 'favorites' ? favorites.length : null
+  const itemCountLabel = view === 'queue' && queueStatus === 'read' ? 'read' : 'saved'
 
   // The api.TagScope matching the currently visible tag filter bar, or null
   // where there isn't one (Search has its own category filter, no tags).
@@ -330,7 +331,7 @@ export default function AppShell() {
         <h1 className="text-lg font-bold tracking-[-.02em] text-paper-50">Grifo</h1>
         {itemCount !== null && (
           <span className="ml-auto text-[11.5px] font-medium text-paper-500">
-            {itemCount} saved
+            {itemCount} {itemCountLabel}
           </span>
         )}
       </header>
@@ -339,7 +340,7 @@ export default function AppShell() {
       )}
 
       {/* Desktop top tabs. Mobile uses the fixed bottom nav instead. */}
-      <nav className="mb-1 mt-4 hidden gap-1 rounded-full bg-white/[0.04] p-1 shadow-gel-track sm:flex">
+      <nav className="mb-1 mt-4 hidden w-max gap-1 rounded-full bg-white/[0.04] p-1 shadow-gel-track sm:flex">
         <TabButton active={view === 'queue'} onClick={() => changeView('queue')}>
           Saved
         </TabButton>

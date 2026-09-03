@@ -393,14 +393,14 @@ export default function Reader({ item: itemProp, onClose, scrollToHighlightId }:
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               placeholder="Note title"
-              className="w-full rounded-[10px] bg-gel-field px-3 py-2 text-lg font-medium text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
+              className="w-full rounded-[10px] bg-ink-800 bg-gel-field px-3 py-2 text-lg font-medium text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
             />
             <textarea
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
               placeholder="Write your note…"
               rows={14}
-              className="mt-3 w-full rounded-[10px] bg-gel-field px-3 py-2 text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
+              className="mt-3 w-full rounded-[10px] bg-ink-800 bg-gel-field px-3 py-2 text-paper-50 shadow-gel-field outline-none placeholder:text-paper-600"
             />
             <div className="mt-3 flex justify-end gap-2">
               <button
@@ -572,7 +572,7 @@ function TitleField({
             onCancel()
           }
         }}
-        className="w-full rounded-[10px] bg-gel-field px-3 py-2 text-2xl font-bold text-paper-50 shadow-gel-field outline-none"
+        className="w-full rounded-[10px] bg-ink-800 bg-gel-field px-3 py-2 text-2xl font-bold text-paper-50 shadow-gel-field outline-none"
       />
       <div className="flex gap-2">
         <button

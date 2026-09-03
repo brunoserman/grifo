@@ -82,7 +82,7 @@ function TitleEditor({
             onCancel()
           }
         }}
-        className="w-full rounded-[10px] bg-gel-field px-2.5 py-1.5 text-sm font-medium text-paper-50 shadow-gel-field outline-none"
+        className="w-full rounded-[10px] bg-ink-800 bg-gel-field px-2.5 py-1.5 text-sm font-medium text-paper-50 shadow-gel-field outline-none"
       />
       <div className="flex gap-2">
         <button
