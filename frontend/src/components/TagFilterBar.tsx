@@ -4,16 +4,19 @@ type Props = {
   tags: TagCount[]
   active: string | null
   onSelect: (tag: string | null) => void
+  // Search draws its own "Tags" section divider above the pills, so it hides
+  // this row's own leading label to avoid saying "tags" twice.
+  hideLabel?: boolean
 }
 
 // A row of tag chips above the queue. Clicking a tag filters the queue to items
 // carrying it; clicking the active tag again (or "All") clears the filter.
-export default function TagFilterBar({ tags, active, onSelect }: Props) {
+export default function TagFilterBar({ tags, active, onSelect, hideLabel }: Props) {
   if (tags.length === 0) return null
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[11px] font-medium text-paper-600">Tags:</span>
+      {!hideLabel && <span className="text-[11px] font-medium text-paper-600">Tags:</span>}
       <Chip label="All" active={active === null} onClick={() => onSelect(null)} />
       {tags.map(({ tag, count }) => (
         <Chip

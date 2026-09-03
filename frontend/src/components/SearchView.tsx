@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { SearchResult } from '../types'
-import type { SearchScope } from '../api'
+import type { SearchScope, TagScope } from '../api'
 import * as api from '../api'
 import { typeLabel } from '../format'
+import PageHeading from './PageHeading'
+import TagFilterBar from './TagFilterBar'
 
 type Props = {
   onOpenSource: (itemId: string, highlightId: string | null) => void
@@ -15,19 +17,79 @@ const SCOPES: { value: SearchScope; label: string }[] = [
   { value: 'highlights', label: 'Highlights' },
 ]
 
+// The api.TagScope matching a search category, or null for "Everything" —
+// there's no single-call count across items+highlights combined, so that
+// case falls back to the unscoped, system-wide tag list.
+function tagScopeFor(scope: SearchScope): TagScope | undefined {
+  if (scope === 'queue') return 'queued'
+  if (scope === 'read') return 'read'
+  if (scope === 'highlights') return 'highlights'
+  return undefined
+}
+
+const iconProps = {
+  width: 13,
+  height: 13,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: '#8b8b94',
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+}
+
+function ResultIcon({ result }: { result: SearchResult }) {
+  if (result.kind === 'highlight') {
+    // The highlighter/pencil glyph used for the Highlights section elsewhere.
+    return (
+      <svg {...iconProps} strokeWidth="1.9">
+        <path d="M12 20h8" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z" />
+      </svg>
+    )
+  }
+  if (result.type === 'note') {
+    return (
+      <svg {...iconProps} strokeWidth="1.9">
+        <path d="M12 20h8" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z" />
+      </svg>
+    )
+  }
+  if (result.type === 'pdf') {
+    return (
+      <svg {...iconProps} strokeWidth="1.8">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z" />
+        <path d="M14 3v5h5" />
+      </svg>
+    )
+  }
+  return (
+    <svg {...iconProps} strokeWidth="2">
+      <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
+      <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
+    </svg>
+  )
+}
+
 // One search field over every field of every article, note and highlight. A
-// scope filter restricts it to the queue, the read archive, or highlights. The
-// prefix wildcard on the last word is added by the Worker, so partial words
-// match without stemming.
+// scope filter restricts it to the queue, the read archive, or highlights,
+// and a tag narrows it further within that scope. The prefix wildcard on the
+// last word is added by the Worker, so partial words match without stemming.
 export default function SearchView({ onOpenSource }: Props) {
   const [q, setQ] = useState('')
   const [scope, setScope] = useState<SearchScope>('all')
+  const [tag, setTag] = useState<string | null>(null)
+  const [tagCounts, setTagCounts] = useState<{ tag: string; count: number }[]>([])
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Debounced search. Re-runs when the query or the scope changes.
+  useEffect(() => {
+    api.listTags(tagScopeFor(scope)).then(setTagCounts).catch(() => {})
+  }, [scope])
+
+  // Debounced search. Re-runs when the query, scope or tag changes.
   useEffect(() => {
     if (!q.trim()) {
       setResults([])
@@ -39,7 +101,7 @@ export default function SearchView({ onOpenSource }: Props) {
       setLoading(true)
       setError(null)
       api
-        .search(q, scope)
+        .search(q, scope, tag)
         .then((r) => {
           setResults(r.results)
           setSearched(true)
@@ -48,20 +110,54 @@ export default function SearchView({ onOpenSource }: Props) {
         .finally(() => setLoading(false))
     }, 250)
     return () => clearTimeout(timer)
-  }, [q, scope])
+  }, [q, scope, tag])
 
   return (
     <div>
-      <input
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search text, author, site — anything…"
-        autoFocus
-        className="w-full rounded-lg border border-neutral-300 bg-white px-4 py-2.5 outline-none focus:border-neutral-500"
+      <PageHeading
+        title="Search"
+        count={searched ? results.length : undefined}
+        label={results.length === 1 ? 'result' : 'results'}
       />
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
+      <div className="mt-4 flex items-center gap-2.5 rounded-2xl bg-ink-800 bg-gel-field px-[15px] py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.14),0_0_0_1px_rgba(253,230,138,.28)]">
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#8b8b94"
+          strokeWidth="2"
+          strokeLinecap="round"
+          className="shrink-0"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search text, author, site — anything…"
+          autoFocus
+          className="min-w-0 flex-1 bg-transparent text-sm font-medium text-paper-50 outline-none placeholder:text-paper-600"
+        />
+        {q && (
+          <button
+            type="button"
+            onClick={() => setQ('')}
+            aria-label="Clear search"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10 text-paper-300"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+              <line x1="5" y1="5" x2="19" y2="19" />
+              <line x1="19" y1="5" x2="5" y2="19" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3.5 flex flex-wrap gap-1.5">
         {SCOPES.map((s) => (
           <button
             key={s.value}
@@ -69,10 +165,10 @@ export default function SearchView({ onOpenSource }: Props) {
             onClick={() => setScope(s.value)}
             aria-pressed={scope === s.value}
             className={
-              'rounded-full border px-3 py-0.5 text-xs ' +
+              'rounded-full px-2.5 py-1.5 text-[11.5px] font-semibold ' +
               (scope === s.value
-                ? 'border-neutral-900 bg-neutral-900 text-white'
-                : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100')
+                ? 'bg-gel-accent text-accent-ink shadow-gel-accent'
+                : 'bg-white/5 text-paper-400 shadow-gel-sm')
             }
           >
             {s.label}
@@ -80,44 +176,62 @@ export default function SearchView({ onOpenSource }: Props) {
         ))}
       </div>
 
+      {tagCounts.length > 0 && (
+        <>
+          <div className="mt-3 flex items-center gap-2">
+            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[.09em] text-paper-700">
+              Tags
+            </span>
+            <span className="h-px flex-1 bg-white/[0.07]" />
+          </div>
+          <div className="mt-2.5">
+            <TagFilterBar tags={tagCounts} active={tag} onSelect={setTag} hideLabel />
+          </div>
+        </>
+      )}
+
       {error && (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <div className="mt-4 rounded-gel-sm bg-red-500/10 px-4 py-2 text-sm text-red-400 shadow-gel-sm">
           {error}
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="mt-4">
         {loading ? (
-          <p className="text-sm text-neutral-400">Searching…</p>
+          <p className="text-sm text-paper-600">Searching…</p>
         ) : searched && results.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
+          <p className="rounded-gel bg-white/[0.03] px-4 py-10 text-center text-sm text-paper-600 shadow-gel-sm">
             Nothing found. Try fewer or different words.
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {results.map((r) => (
               <button
                 key={`${r.kind}-${r.highlightId ?? r.itemId}`}
                 type="button"
                 onClick={() => onOpenSource(r.itemId, r.highlightId)}
-                className="block w-full rounded-lg border border-neutral-200 bg-white p-4 text-left shadow-sm hover:border-neutral-300"
+                className="block w-full rounded-gel-sm bg-gel-field p-[14px] text-left shadow-[inset_0_1px_0_rgba(255,255,255,.1),0_5px_16px_rgba(0,0,0,.28)]"
               >
-                <span className="mb-1 inline-block rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-neutral-500">
-                  {r.kind === 'highlight' ? 'Highlight' : typeLabel[r.type]}
-                </span>
-                <p
-                  className="search-snippet text-sm text-neutral-800"
-                  dangerouslySetInnerHTML={{ __html: r.snippet }}
-                />
-                <p className="mt-2 truncate text-sm text-blue-700">
-                  {r.title}
-                  {(r.author || r.siteName) && (
-                    <span className="text-neutral-400">
-                      {' · '}
-                      {[r.author, r.siteName].filter(Boolean).join(' · ')}
-                    </span>
+                <div className="mb-2 flex items-center gap-1.5">
+                  <ResultIcon result={r} />
+                  <span className="text-[11px] font-semibold text-paper-400">
+                    {typeLabel[r.type]}
+                    {r.siteName && ` · ${r.siteName}`}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold tracking-[-.01em] text-paper-50">
+                  {r.kind === 'highlight' ? (
+                    <>
+                      Highlight <span className="font-medium text-paper-500">· {r.title}</span>
+                    </>
+                  ) : (
+                    r.title
                   )}
                 </p>
+                <p
+                  className="search-snippet mt-[7px] font-serif text-[13px] leading-[1.55] text-paper-600"
+                  dangerouslySetInnerHTML={{ __html: r.snippet }}
+                />
               </button>
             ))}
           </div>

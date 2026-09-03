@@ -73,7 +73,7 @@ export default function QueueList({
         items={items.map((i) => i.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {items.map((item) => (
             <QueueItemCard
               key={item.id}

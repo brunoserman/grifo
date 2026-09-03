@@ -7,6 +7,7 @@ import QueueList from './QueueList'
 import ArchiveList from './ArchiveList'
 import FavoritesList from './FavoritesList'
 import TagFilterBar from './TagFilterBar'
+import PageHeading from './PageHeading'
 import HighlightsView from './HighlightsView'
 import SearchView from './SearchView'
 import BottomNav from './BottomNav'
@@ -51,12 +52,11 @@ export default function AppShell() {
   const [showTagline, setShowTagline] = useState(true)
 
   const allTagNames = availableTags.map((t) => t.tag)
-  // Shown next to the wordmark, matching the mockup's "18 saved" — the size of
-  // whichever list is currently on screen (Highlights/Search have their own
-  // count in their own header instead, so they're left out here).
-  const itemCount =
-    view === 'queue' ? items.length : view === 'favorites' ? favorites.length : null
-  const itemCountLabel = view === 'queue' && queueStatus === 'read' ? 'read' : 'saved'
+  // Shown next to the wordmark, matching the mockup's "18 saved". Only the
+  // Saved screen uses this — Highlights/Search/Favorites show their own count
+  // under their own page title instead ("Grifo" isn't their title there).
+  const itemCount = view === 'queue' ? items.length : null
+  const itemCountLabel = queueStatus === 'read' ? 'read' : 'saved'
 
   // The api.TagScope matching the currently visible tag filter bar, or null
   // where there isn't one (Search has its own category filter, no tags).
@@ -379,23 +379,37 @@ export default function AppShell() {
         </div>
       )}
 
-      {view === 'highlights' && scopedTagCounts.length > 0 && (
-        <div className="mt-3">
-          <TagFilterBar
-            tags={scopedTagCounts}
-            active={highlightsTag}
-            onSelect={setHighlightsTag}
+      {view === 'highlights' && (
+        <div className="mt-4">
+          <PageHeading
+            title="Highlights"
+            count={allHighlights.length}
+            label={allHighlights.length === 1 ? 'passage kept' : 'passages kept'}
           />
+          {scopedTagCounts.length > 0 && (
+            <div className="mt-3.5">
+              <TagFilterBar
+                tags={scopedTagCounts}
+                active={highlightsTag}
+                onSelect={setHighlightsTag}
+              />
+            </div>
+          )}
         </div>
       )}
 
-      {view === 'favorites' && scopedTagCounts.length > 0 && (
-        <div className="mt-3">
-          <TagFilterBar
-            tags={scopedTagCounts}
-            active={favoritesTag}
-            onSelect={setFavoritesTag}
-          />
+      {view === 'favorites' && (
+        <div className="mt-4">
+          <PageHeading title="Favorites" count={favorites.length} label="saved" />
+          {scopedTagCounts.length > 0 && (
+            <div className="mt-3.5">
+              <TagFilterBar
+                tags={scopedTagCounts}
+                active={favoritesTag}
+                onSelect={setFavoritesTag}
+              />
+            </div>
+          )}
         </div>
       )}
 

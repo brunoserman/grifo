@@ -77,15 +77,6 @@ export default function StaticItemCard({
                 >
                   Edit title
                 </MenuRow>
-                <MenuRow
-                  onClick={() => {
-                    onToggleFavorite(item)
-                    close()
-                  }}
-                >
-                  {item.favorite ? 'Remove from favorites' : 'Add to favorites'}
-                </MenuRow>
-                {menuExtra?.(close)}
                 <div className="mt-1 border-t border-white/[0.06] px-2.5 py-1.5">
                   <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-paper-700">
                     Add tag
@@ -95,6 +86,17 @@ export default function StaticItemCard({
                     suggestions={allTags}
                     onSave={(tags) => onSetTags(item.id, tags)}
                   />
+                </div>
+                <div className="mt-1 border-t border-white/[0.06] pt-1">
+                  <MenuRow
+                    onClick={() => {
+                      onToggleFavorite(item)
+                      close()
+                    }}
+                  >
+                    {item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                  </MenuRow>
+                  {menuExtra?.(close)}
                 </div>
               </>
             )}

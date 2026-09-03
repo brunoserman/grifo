@@ -53,30 +53,30 @@ export default function ShareRoute() {
   if (!match) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-white p-6 text-center">
-      <h1 className="text-xl font-semibold tracking-tight">Grifo</h1>
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-app-bg bg-ink-900 p-6 text-center">
+      <h1 className="text-xl font-bold tracking-[-.02em] text-paper-50">Grifo</h1>
 
-      {state === 'saving' && <p className="text-sm text-neutral-500">Saving the link…</p>}
+      {state === 'saving' && <p className="text-sm text-paper-500">Saving the link…</p>}
 
       {state === 'saved' && (
         <>
-          <p className="text-sm text-neutral-700">
+          <p className="text-sm text-paper-300">
             Saved to your queue{saved?.title ? `: “${saved.title}”` : '.'}
           </p>
           {saved?.extraction === 'failed' && (
-            <p className="text-xs text-amber-600">
+            <p className="text-xs text-accent-400">
               The article text couldn't be extracted, but the link is safe.
             </p>
           )}
         </>
       )}
 
-      {state === 'error' && <p className="text-sm text-red-700">{message}</p>}
+      {state === 'error' && <p className="text-sm text-red-400">{message}</p>}
 
       <button
         type="button"
         onClick={() => navigate('/')}
-        className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
+        className="rounded-full bg-gel-accent px-4 py-2 text-sm font-bold text-accent-ink shadow-gel-accent"
       >
         Open Grifo
       </button>

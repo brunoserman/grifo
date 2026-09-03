@@ -26,7 +26,7 @@ export default function FavoritesList({
 }: Props) {
   if (items.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-400">
+      <p className="rounded-gel bg-white/[0.03] px-4 py-10 text-center text-sm text-paper-600 shadow-gel-sm">
         {filtered
           ? 'No favorites with this tag. Pick another tag or “All”.'
           : 'No favorites yet. Star any item to keep it here.'}
@@ -35,15 +35,9 @@ export default function FavoritesList({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {items.map((item) => {
-        const meta = [
-          itemSourceLabel(item),
-          readingTime(item),
-          item.status === 'read' ? 'read' : 'in queue',
-          formatDate(item.saved_at),
-          ...item.tags,
-        ]
+        const meta = [itemSourceLabel(item), readingTime(item), formatDate(item.saved_at), ...item.tags]
           .filter(Boolean)
           .join(' · ')
 
