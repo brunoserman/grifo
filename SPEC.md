@@ -143,7 +143,7 @@ Each phase must be usable on its own. A personal project that only works at the 
 3. **Search.** — *Done.* One field, unified results across articles, notes and highlights, ranked by relevance, with the matching snippet. The single query matches every field, including author and site. Automatic prefix on the last word.
 4. **PDF.** — *Deferred.* In-app viewing and passage capture with page number, per the cut above.
 5. **Folders, if still missed.** — *Deferred.* Nested tree, move item, navigation.
-6. **Quick capture.** — *Partly done:* saving from mobile via the Android share sheet ships (a PWA `share_target` at `/share`). The browser extension is out of scope.
+6. **Quick capture.** — *Done:* saving from mobile via the Android share sheet (a PWA `share_target` at `/share`), and from desktop Chrome via an unpacked extension in `extension/` that saves to the queue or straight to Favorites.
 
 Phase 1 is already a product: on its own it satisfies success criterion 1.
 

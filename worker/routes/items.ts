@@ -68,16 +68,19 @@ items.post('/items', async (c) => {
   }
 
   const body = await c.req.json<
-    | { type: 'link'; url?: string }
+    | { type: 'link'; url?: string; favorite?: boolean }
     | { type: 'note'; title?: string; text?: string }
   >()
 
-  if (body.type === 'link') return saveLink(c, body.url)
+  if (body.type === 'link') return saveLink(c, body.url, body.favorite === true)
   if (body.type === 'note') return saveNote(c, body.title, body.text)
   return c.json({ error: 'Unknown item type' }, 400)
 })
 
-async function saveLink(c: Ctx, url?: string) {
+// favorite saves straight to Favorites (from the browser extension or the share
+// route). Such a link was already read elsewhere, so it is filed as read rather
+// than pushed onto the queue.
+async function saveLink(c: Ctx, url?: string, favorite = false) {
   if (!url || !/^https?:\/\//i.test(url)) {
     return c.json({ error: 'A valid http(s) url is required' }, 400)
   }
@@ -107,8 +110,9 @@ async function saveLink(c: Ctx, url?: string) {
   const insert = c.env.DB.prepare(
     `INSERT INTO items
        (id, type, title, source_url, author, site_name, excerpt,
-        content_html, content_text, word_count, thumbnail_url, position, extraction, extraction_error)
-     VALUES (?, 'link', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        content_html, content_text, word_count, thumbnail_url, position, extraction, extraction_error,
+        favorite, status, read_at)
+     VALUES (?, 'link', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     id,
     title,
@@ -122,7 +126,10 @@ async function saveLink(c: Ctx, url?: string) {
     extracted?.thumbnail_url ?? null,
     newPosition(),
     extraction,
-    extractionError
+    extractionError,
+    favorite ? 1 : 0,
+    favorite ? 'read' : 'queued',
+    favorite ? Math.floor(Date.now() / 1000) : null
   )
 
   await c.env.DB.batch([

@@ -50,8 +50,9 @@ export const setItemTags = (id: string, tags: string[]) =>
     body: JSON.stringify({ tags }),
   })
 
-export const saveLink = (url: string) =>
-  request<Item>('/api/items', json({ type: 'link', url }))
+// favorite saves straight to Favorites, filed as already read (see the worker).
+export const saveLink = (url: string, favorite = false) =>
+  request<Item>('/api/items', json({ type: 'link', url, favorite }))
 
 export const saveNote = (title: string, text: string) =>
   request<Item>('/api/items', json({ type: 'note', title, text }))

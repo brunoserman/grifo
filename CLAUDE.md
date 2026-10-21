@@ -39,4 +39,7 @@ Phases 1-3 complete: the queue, reading-view highlights + aggregated highlights
 page, and search. The reading view is a dedicated full-screen screen on mobile
 (its own `/read/:id` route) and a modal on desktop; client routing uses
 react-router. A PWA `share_target` (`/share`) saves links shared from Android.
+A Chrome extension (`extension/`, plain MV3 JS, no build) saves the current page
+or a link to the queue or to Favorites, falling back to `/share` when Access blocks
+the direct API call.
 Deferred: phase 4 (in-app PDF viewing and passage capture) and phase 5 (folders).

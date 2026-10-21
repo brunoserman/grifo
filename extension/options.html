@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Save to Grifo: settings</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      body { max-width: 480px; margin: 48px auto; padding: 0 16px; }
+      label { display: block; margin-bottom: 6px; }
+      .row { display: flex; gap: 8px; }
+      input { flex: 1; font: inherit; color: var(--text); background: var(--card); border: 1px solid #3a3940; border-radius: 12px; padding: 9px 12px; }
+      #status { min-height: 18px; }
+    </style>
+  </head>
+  <body>
+    <h1>Save to Grifo</h1>
+    <form id="form">
+      <label for="origin">Your Grifo address</label>
+      <div class="row">
+        <input id="origin" placeholder="grifo.yourname.workers.dev" autocomplete="off" />
+        <button class="primary" type="submit">Save</button>
+      </div>
+    </form>
+    <p class="muted">
+      The address you open Grifo at. Chrome will ask to let the extension talk to it: allow it, so
+      links save without opening a tab.
+    </p>
+    <p id="status" class="muted"></p>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

@@ -140,7 +140,7 @@ Zero. Not "free tier for now" zero, but zero: single user, on free tiers with no
 - [x] **3. Search.** One field, unified results across articles, notes and highlights, ranked, with the matching snippet.
 - [ ] **4. PDF.** In-app viewing and passage capture with page numbers. *(Deferred.)*
 - [ ] **5. Folders, if I still miss them.** *(Deferred.)*
-- [x] **6. Save from the phone.** Android share-sheet target saves a shared link. *(Browser extension out of scope.)*
+- [x] **6. Quick capture.** Android share-sheet target saves a shared link; a Chrome extension saves the current page or a link to the queue or to Favorites (see [`extension/`](./extension)).
 
 Each phase is usable on its own. Phase 1 alone satisfies success criterion 1.
 
@@ -168,6 +168,9 @@ Decisions live in [`docs/decisions/`](./docs/decisions), written as they were ma
 - [0007. A PWA needs an explicit manifest and correct static-file serving](./docs/decisions/0007-pwa-needs-an-explicit-manifest.md)
 - [0008. Authentication via Cloudflare Access, no password](./docs/decisions/0008-auth-via-cloudflare-access.md)
 - [0009. Mobile reading is a dedicated screen, not a modal](./docs/decisions/0009-mobile-reading-is-a-dedicated-screen.md)
+- [0010. Favorites are a separate axis from the queue](./docs/decisions/0010-favorites-are-a-separate-axis.md)
+- [0011. Flat tags, not folders](./docs/decisions/0011-flat-tags-not-folders.md)
+- [0012. The browser extension calls the API and falls back to the share route](./docs/decisions/0012-browser-extension-reuses-the-share-route.md)
 
 ## License
 

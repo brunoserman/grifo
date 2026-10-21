@@ -17,7 +17,9 @@ function extractUrl(params: URLSearchParams): string | null {
 }
 
 // The PWA share target. When a URL is shared into Grifo, this route saves it as
-// a link (running the normal extraction flow) and confirms.
+// a link (running the normal extraction flow) and confirms. The browser
+// extension also lands here when it can't call the API directly, adding
+// favorite=1 to save straight to Favorites.
 export default function ShareRoute() {
   const match = useMatch('/share')
   const [searchParams] = useSearchParams()
@@ -26,6 +28,7 @@ export default function ShareRoute() {
   const [state, setState] = useState<'saving' | 'saved' | 'error'>('saving')
   const [message, setMessage] = useState('')
   const [saved, setSaved] = useState<Item | null>(null)
+  const favorite = searchParams.get('favorite') === '1'
 
   useEffect(() => {
     if (!match || done.current) return
@@ -39,7 +42,7 @@ export default function ShareRoute() {
     }
 
     api
-      .saveLink(url)
+      .saveLink(url, favorite)
       .then((item) => {
         setSaved(item)
         setState('saved')
@@ -48,7 +51,7 @@ export default function ShareRoute() {
         setState('error')
         setMessage(e instanceof Error ? e.message : 'Could not save the link.')
       })
-  }, [match, searchParams])
+  }, [match, searchParams, favorite])
 
   if (!match) return null
 
@@ -61,7 +64,7 @@ export default function ShareRoute() {
       {state === 'saved' && (
         <>
           <p className="text-sm text-paper-300">
-            Saved to your queue{saved?.title ? `: “${saved.title}”` : '.'}
+            Saved to your {favorite ? 'favorites' : 'queue'}{saved?.title ? `: “${saved.title}”` : '.'}
           </p>
           {saved?.extraction === 'failed' && (
             <p className="text-xs text-accent-400">

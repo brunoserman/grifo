@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      body { width: 280px; padding: 16px; }
+      #page { margin: 0 0 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+      .actions { display: flex; flex-direction: column; gap: 8px; }
+      #status { min-height: 18px; margin: 12px 0 0; }
+      footer { margin-top: 8px; text-align: right; }
+    </style>
+  </head>
+  <body>
+    <h1>Grifo</h1>
+    <p id="page" class="muted"></p>
+    <div class="actions">
+      <button id="queue" class="primary">Save to queue</button>
+      <button id="favorite" class="secondary">★ Save to favorites</button>
+    </div>
+    <p id="status" class="muted"></p>
+    <footer><a href="#" id="settings" class="muted">Settings</a></footer>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
