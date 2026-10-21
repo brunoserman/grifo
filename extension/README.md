@@ -7,6 +7,8 @@ Saves the page you are on, or any link, to Grifo's queue or straight to Favorite
 
 Saving to Favorites files the item as read: it shows in Favorites and in the read archive, not in the queue.
 
+A link that is already in Grifo is not saved again: the earlier item is kept as it is, and the popup (or a notification, for right-click saves) says where it already is.
+
 ## Install
 
 The extension is not on the Chrome Web Store. It is loaded from this folder.
@@ -18,7 +20,7 @@ The extension is not on the Chrome Web Store. It is loaded from this folder.
 5. Chrome asks to let the extension read and change data on that site. Allow it.
 6. Optional: pin the Grifo icon in the puzzle-piece menu so it stays on the toolbar.
 
-To update after a change in this folder, click the reload arrow on the extension's card in `chrome://extensions`.
+To update, replace the folder's contents with the new version and click the reload arrow on the extension's card in `chrome://extensions`.
 
 ## How it saves
 

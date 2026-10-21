@@ -27,6 +27,7 @@ Cloudflare Workers + Hono, D1 (plain SQL, no ORM), R2, React + Vite + Tailwind.
 - `jsdom` does not run on Workers. Extraction uses `linkedom`.
 - Extraction failure must never prevent saving the item.
 - Marking as read must never delete highlights.
+- A link is never saved twice. Saving one already in Grifo (same page after `urlKey` normalization in `worker/lib/dedupe.ts`) returns 409 and keeps the earlier item untouched.
 - Highlights are anchored by quote + prefix + suffix, never by DOM offset.
 - Search is D1 native FTS5, always `unicode61 remove_diacritics 2` with `prefix='2 3'`. No external service.
 - NEVER use the `porter` tokenizer: English-only, and the requirement is multi-language.

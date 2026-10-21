@@ -35,7 +35,7 @@ export const isSaveable = (url) => typeof url === 'string' && /^https?:\/\//i.te
 // instead: a normal page load logs in if needed and saves from there.
 //
 // Resolves to { status: 'saved', title } | { status: 'opened' } |
-// { status: 'error', message }.
+// { status: 'duplicate', message } | { status: 'error', message }.
 export async function saveLink(url, favorite) {
   const origin = await getOrigin()
   if (!origin) {
@@ -59,6 +59,11 @@ export async function saveLink(url, favorite) {
   if (res?.status === 201) {
     const item = await res.json().catch(() => null)
     return { status: 'saved', title: item?.title ?? null }
+  }
+  // Already saved: Grifo keeps the earlier item and says where it is.
+  if (res?.status === 409) {
+    const body = await res.json().catch(() => null)
+    return { status: 'duplicate', message: body?.error ?? 'This link is already in Grifo.' }
   }
   // A 400 is Grifo rejecting the link itself; the tab would fail the same way.
   if (res?.status === 400) {

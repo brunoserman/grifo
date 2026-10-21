@@ -28,7 +28,17 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
   const menu = MENUS.find((m) => m.id === info.menuItemId)
   if (!menu) return
   const url = menu.context === 'link' ? info.linkUrl : info.pageUrl
-  flash(await saveLink(url, menu.favorite))
+  const result = await saveLink(url, menu.favorite)
+  flash(result)
+  // No popup to show a warning in, so a duplicate or a failure gets a notice.
+  if (result.message) {
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icons/icon-128.png',
+      title: result.status === 'duplicate' ? 'Already in Grifo' : 'Grifo could not save this',
+      message: result.message,
+    })
+  }
 })
 
 // The popup hands the save over to this worker, so it finishes even if the
@@ -44,10 +54,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 // A short badge on the toolbar icon confirms a save made from the right-click
 // menu, where there is no popup to show it. An opened tab speaks for itself.
+const BADGES = {
+  saved: { text: '✓', color: '#f2ca55' },
+  duplicate: { text: '=', color: '#6b6b73' },
+  error: { text: '!', color: '#dc2626' },
+}
+
 function flash(result) {
-  if (result.status === 'opened') return
-  const ok = result.status === 'saved'
-  chrome.action.setBadgeBackgroundColor({ color: ok ? '#f2ca55' : '#dc2626' })
-  chrome.action.setBadgeText({ text: ok ? '✓' : '!' })
+  const badge = BADGES[result.status]
+  if (!badge) return
+  chrome.action.setBadgeBackgroundColor({ color: badge.color })
+  chrome.action.setBadgeText({ text: badge.text })
   setTimeout(() => chrome.action.setBadgeText({ text: '' }), 4000)
 }

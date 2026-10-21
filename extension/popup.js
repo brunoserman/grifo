@@ -31,6 +31,8 @@ async function save(favorite) {
     setTimeout(() => window.close(), 1200)
   } else if (result.status === 'opened') {
     window.close()
+  } else if (result.status === 'duplicate') {
+    status.textContent = result.message
   } else {
     status.textContent = result.message
     status.classList.add('error')

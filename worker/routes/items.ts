@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono'
 import type { Bindings, Item } from '../types'
 import { extractFromUrl } from '../lib/extract'
 import { indexItemStatements, unindexItemStatements } from '../lib/search-index'
+import { findDuplicateLink } from '../lib/dedupe'
 
 type Ctx = Context<{ Bindings: Bindings }>
 
@@ -85,6 +86,11 @@ async function saveLink(c: Ctx, url?: string, favorite = false) {
     return c.json({ error: 'A valid http(s) url is required' }, 400)
   }
 
+  // A link already in Grifo is never saved twice: the earlier item is kept.
+  // Checked before extraction so a duplicate costs no page fetch.
+  const existing = await findDuplicateLink(c.env.DB, url)
+  if (existing) return duplicateResponse(c, existing)
+
   // Try extraction, but never let its failure stop the save.
   let extracted = null
   let extractionError: string | null = null
@@ -99,6 +105,11 @@ async function saveLink(c: Ctx, url?: string, favorite = false) {
   // If a wrapper (e.g. a LinkedIn post) resolved to a YouTube video, store the
   // video URL as the source so "Open" plays it.
   const sourceUrl = extracted?.resolved_url || url
+  // A wrapper can resolve to a link that is already saved under its own URL.
+  if (sourceUrl !== url) {
+    const resolvedExisting = await findDuplicateLink(c.env.DB, sourceUrl)
+    if (resolvedExisting) return duplicateResponse(c, resolvedExisting)
+  }
   // 'ok' only when a real article body came back. A page with just a title
   // (LinkedIn, YouTube, a SPA) is still saved, but as 'failed', so it keeps
   // opening the original URL while being identifiable in the queue.
@@ -145,6 +156,17 @@ async function saveLink(c: Ctx, url?: string, favorite = false) {
 
   const item = await getItem(c.env.DB, id)
   return c.json(item, 201)
+}
+
+// 409 with the earlier item, and a message saying where it already is.
+async function duplicateResponse(c: Ctx, id: string) {
+  const item = await getItem(c.env.DB, id)
+  const where = item?.favorite
+    ? 'your favorites'
+    : item?.status === 'read'
+      ? 'your read items'
+      : 'your queue'
+  return c.json({ error: `This link is already in ${where}. Nothing new was saved.`, item }, 409)
 }
 
 async function saveNote(
