@@ -171,6 +171,7 @@ Decisions live in [`docs/decisions/`](./docs/decisions), written as they were ma
 - [0010. Favorites are a separate axis from the queue](./docs/decisions/0010-favorites-are-a-separate-axis.md)
 - [0011. Flat tags, not folders](./docs/decisions/0011-flat-tags-not-folders.md)
 - [0012. The browser extension calls the API and falls back to the share route](./docs/decisions/0012-browser-extension-reuses-the-share-route.md)
+- [0013. A link is never saved twice](./docs/decisions/0013-a-link-is-never-saved-twice.md)
 
 ## License
 
